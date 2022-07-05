@@ -1,19 +1,19 @@
-﻿namespace Vips;
-
-public class BaseSerial
+﻿namespace Vips
 {
-    public int PortNum { get; set; }
-   
-
-    public void Write(string write)
+    public class BaseSerial
     {
-        //write -> to port
-    }
-    
-    public string Read()
-    {
-        //in port -> return 
-        return "Ok";
-    }
+        public int PortNum { get; set; }
 
+
+        public void Write(string write)
+        {
+            //write -> to port
+        }
+
+        public string Read()
+        {
+            //in port -> return 
+            return "Ok";
+        }
+    }
 }

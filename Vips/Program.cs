@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using System;
 using Vips;
 
 ConfigVips configVips = new ConfigVips();
@@ -33,17 +34,20 @@ configVips.AddVip("6", 0);
 if (CheckedVipsName(configVips))
 {
     Console.WriteLine("нет совп. имен");
+    //уведомить
 }
 
 if (!CheckedVipsName(configVips))
 {
     Console.WriteLine("Nope");
+    //уведомить
     return;
 }
 
-stand.AddDevice(TypeDevice.VoltMeter, "GDM-74303", 3, 0, 8);
-stand.AddDevice(TypeDevice.VoltMeter, "GDM-7433", 3, 0, 8);
-stand.AddDevice(TypeDevice.VoltMeter, "GDM-4303", 2, 0, 8);
+stand.AddDevice(TypeDevice.VoltMeter, "GDM-74303", 1, 0, 8);
+stand.AddDevice(TypeDevice.VoltMeter, "GDM-7433",2 , 0, 8);
+stand.AddDevice(TypeDevice.VoltMeter, "GDM-4303",3 , 0, 8);
+
 
 stand.AddDevice(TypeDevice.Relay, "1", 4, 0, 8);
 stand.AddDevice(TypeDevice.Relay, "2", 5, 0, 8);
@@ -60,11 +64,10 @@ stand.AddDevice(TypeDevice.Relay, "12", 15, 0, 8);
 
 
 //TODO првильно ли я все написал (надо чтобы обновлялось configVips.Vips, когда измененяется stand.Vips)
-//TODO может создать список ыфше по иерерхии иличенть такое
+//TODO может создать список выше по иерерхии или ченть такое
 stand.Vips = configVips.Vips;
 
 stand.Start();
-
 
 static bool CheckedVipsName(ConfigVips configVips)
 {

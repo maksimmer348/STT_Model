@@ -1,9 +1,10 @@
-﻿namespace Vips;
-
-public enum TypeDevice
+﻿namespace Vips
 {
-    VoltMeter,
-    Thermometer,
-    Load,
-    Relay
+    public enum TypeDevice
+    {
+        VoltMeter,
+        Thermometer,
+        Load,
+        Relay
+    }
 }

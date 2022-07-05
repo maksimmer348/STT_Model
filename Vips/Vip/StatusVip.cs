@@ -1,8 +1,10 @@
-﻿namespace Vips;
-
-public enum StatusVip
+﻿namespace Vips
 {
-    None,
-    Error,
-    Ok
+
+    public enum StatusVip
+    {
+        None,
+        Error,
+        Ok
+    }
 }

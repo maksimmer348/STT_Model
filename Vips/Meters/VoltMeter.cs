@@ -1,7 +1,11 @@
-﻿namespace Vips;
-
-public class VoltMeter : BaseMeter
+﻿namespace Vips
 {
-    public double Volt { get; set; }
-    public double Current { get; set; }
+    public class VoltMeter : BaseMeter
+    {
+        public double Volt { get; set; }
+        public double Current { get; set; }
+        
+        
+        public Static 
+    }
 }

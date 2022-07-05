@@ -1,6 +1,7 @@
-﻿namespace Vips;
-
-public class Load : BaseMeter
+﻿namespace Vips
 {
-    public string DataInLoad { get; set; }
+    public class Load : BaseMeter
+    {
+        public string DataInLoad { get; set; }
+    }
 }
