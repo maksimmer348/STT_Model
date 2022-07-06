@@ -2,14 +2,13 @@
 
 namespace Vips
 {
-
     public class BaseMeter
     {
         public string Name { get; set; }
         private TypeDevice type;
         private BaseSerial port;
-        private LibDefaultTypes lib = new();
-
+        private LibDefaultCmd lib = new();
+        LibDefaultCommand
 
         public bool Config(int portNum, int baudRate, int stopBits, int checkTimes = 1, bool check = true)
         {
@@ -30,7 +29,6 @@ namespace Vips
 
         public bool Checked(int checkTimes = 1)
         {
-
             if (lib.DefaultCommand.ContainsKey(Name))
             {
                 var value = lib.DefaultCommand[Name];

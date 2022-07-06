@@ -4,8 +4,5 @@
     {
         public double Volt { get; set; }
         public double Current { get; set; }
-        
-        
-        public Static 
     }
 }
