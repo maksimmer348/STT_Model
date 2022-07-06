@@ -4,7 +4,10 @@ using System;
 using Vips;
 
 ConfigVips configVips = new ConfigVips();
+
 Stand stand = new Stand();
+
+
 
 // Console.WriteLine("введите номер випа");
 // string wrN = Console.ReadLine();
@@ -24,6 +27,7 @@ Stand stand = new Stand();
 // wrN = Console.ReadLine();
 // configVips.AddVip(wrN, Int32.Parse(wrT));
 
+//добвление эфемерных випов
 configVips.AddVip("1", 0);
 configVips.AddVip("2", 0);
 configVips.AddVip("3", 0);
@@ -31,25 +35,13 @@ configVips.AddVip("4", 0);
 configVips.AddVip("5", 0);
 configVips.AddVip("6", 0);
 
-if (CheckedVipsName(configVips))
-{
-    Console.WriteLine("нет совп. имен");
-    //уведомить
-}
-
-if (!CheckedVipsName(configVips))
-{
-    Console.WriteLine("Nope");
-    //уведомить
-    return;
-}
-
+//добавление приборв измерения в стенд
 stand.AddDevice(TypeDevice.VoltMeter, "GDM-74303", 1, 0, 8);
-stand.AddDevice(TypeDevice.VoltMeter, "GDM-7433",2 , 0, 8);
-stand.AddDevice(TypeDevice.VoltMeter, "GDM-4303",3 , 0, 8);
+stand.AddDevice(TypeDevice.Thermometer, "GDM-7433",2 , 0, 8);
+stand.AddDevice(TypeDevice.Load, "GDM-4303",3 , 0, 8);
 
 
-stand.AddDevice(TypeDevice.Relay, "1", 4, 0, 8);
+stand.AddDevice(TypeDevice.Relay, "1", 5, 0, 8);
 stand.AddDevice(TypeDevice.Relay, "2", 5, 0, 8);
 stand.AddDevice(TypeDevice.Relay, "3", 6, 0, 8);
 stand.AddDevice(TypeDevice.Relay, "4", 7, 0, 8);
@@ -65,19 +57,7 @@ stand.AddDevice(TypeDevice.Relay, "12", 15, 0, 8);
 
 //TODO првильно ли я все написал (надо чтобы обновлялось configVips.Vips, когда измененяется stand.Vips)
 //TODO может создать список выше по иерерхии или ченть такое
+//TODO должо 
 stand.Vips = configVips.Vips;
 
 stand.Start();
-
-static bool CheckedVipsName(ConfigVips configVips)
-{
-    //проверить чтобы именя випов в списке не совпадали
-    bool equalsName = false;
-    if (equalsName)
-    {
-        //уведомить что имена совпали
-        return false;
-    }
-
-    return true;
-}

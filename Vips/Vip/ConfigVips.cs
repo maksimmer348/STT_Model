@@ -5,6 +5,7 @@ namespace Vips
 {
     public class ConfigVips
     {
+        private MainValidator mainValidator = new();
         public ConfigVips()
         {
             Vips = new ObservableCollection<Vip>();
@@ -31,39 +32,64 @@ namespace Vips
                 {Type = "Vip70", MaxTemperature = 70, MaxVoltage1 = 30, MaxVoltage2 = 27, MaxCurrent = 5});
         }
 
+      
+     
+        //TODO сделать чтобы выполнялось при потере контекста в текстбоксе
+        /// <summary>
+        /// Доабавить новый Вип
+        /// </summary>
+        /// <param name="name">Имя Випа (Берется из текстбокса)</param>
+        /// <param name="indexTypeVip">Тип Випа (берется из списка который будет привязан к индексу сомбобокса)</param>
         public void AddVip(string name, int indexTypeVip)
         {
             if (!string.IsNullOrWhiteSpace(name))
             {
+                // проверка на недопуст символы 
+                if (!mainValidator.ValidateInvalidSymbols(name))
+                {
+                    //TODO уточнить где кидать исключение здесь или в классе MainValidator
+                    //TODO сделать чтобы исключение выбрасывалось при потере контекста в текстбоксе
+                    throw new VipException($"Название добавляемого Випа - {name}, содержит недопустимые символы");
+                }
+                
+                // проверка на повторяющиеся имена Випов 
+                if (!mainValidator.ValidateCollisionName(name, Vips))
+                {
+                    //TODO уточнить где кидать исключение здесь или в классе MainValidator
+                    //TODO сделать чтобы исключение выбрасывалось при потере контекста в текстбоксе
+                    throw new VipException($"Название добавляемого Випа - {name}, уже есть в списке");
+                }
+                
                 var vip = new Vip()
                 {
                     Name = name,
                     Type = TypeVips[indexTypeVip],
                     Status = StatusVip.None
                 };
-
                 Vips.Add(vip);
-
                 Console.WriteLine("Вип имя: " + vip.Name + " был добалвен");
                 //уведомить
             }
         }
-
-        public void RemoveVip(int indexVip)
+        
+        //TODO должно срабоать при удалении текста из текстбокса 
+        /// <summary>
+        /// Удаление Випа
+        /// </summary>
+        /// <param name="indexVip">Индекс Випа (берется из списка который будет привязан к индексу сомбобокса)</param>
+        public void RemoveVip(Vip vip)
         {
             try
             {
-                Vips.RemoveAt(indexVip);
-                Console.WriteLine("Вип c индексом: " + indexVip + " был удален");
+                Vips.Remove(vip);
+                Console.WriteLine("Вип : " + vip.Name + " был удален");
                 //уведомить
             }
-            catch (Exception e)
+            catch (VipException e)
             {
-                Console.WriteLine(e);
-                Console.WriteLine("Вип c индексом: " + indexVip + "не был был удален");
-                //уведомить
-                throw;
+                throw new VipException("Вип c индексом: " + vip.Name + "не был был удален");
             }
+           
         }
     }
 }

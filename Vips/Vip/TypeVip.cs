@@ -6,7 +6,7 @@
     {
         public string Type { get; set; }
 
-        //максимальные значения во время прредпотготовки испытания 
+        //максимальные значения во время предпотготовки испытания 
         public int PrepareMaxCurrent { get; set; }
         public int PrepareMaxVoltage1 { get; set; }
         public int PrepareMaxVoltage2 { get; set; }

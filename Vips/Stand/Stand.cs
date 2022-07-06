@@ -6,14 +6,13 @@ namespace Vips
 {
     public class Stand
     {
+        private MainValidator mainValidator = new MainValidator();
         public ObservableCollection<VoltMeter> VoltMeters { get; set; } = new ObservableCollection<VoltMeter>();
         public ObservableCollection<Thermometer> Thermometers { get; set; } = new ObservableCollection<Thermometer>();
         public ObservableCollection<Load> Loads { get; set; } = new ObservableCollection<Load>();
-
         public ObservableCollection<RelaySwitch> Relays { get; set; } = new ObservableCollection<RelaySwitch>();
         public ObservableCollection<Vip> Vips { get; set; } = new ObservableCollection<Vip>();
 
-        List<int> boundsPorts = new List<int>();
 
         /// <summary>
         /// Добавление устройств в стенд
@@ -21,17 +20,14 @@ namespace Vips
         /// <param name="typeDevice">Тип устройства</param>
         /// <param name="nameDevice">Имя устройства</param>
         /// <param name="portNum">Номер порта устройства</param>
-        /// <param name="baudRate">БаудРейт устройства</param>
-        /// <param name="stopBits">СтоповыйБит устройства</param>
+        /// <param name="baudRate">Бауд Рейт устройства</param>
+        /// <param name="stopBits">Стоповый Бит устройства</param>
         public void AddDevice(TypeDevice typeDevice, string nameDevice, int portNum, int baudRate, int stopBits,
             int checkedTimes = 1)
         {
-            if (boundsPorts.Contains(portNum))
+            if (!mainValidator.ValidateCollisionPort(portNum))
             {
-                //TODO спросить что сделать тут исключение?
-                Console.WriteLine("Такой порт уже занят");
-                //уведомить
-                return;
+                throw new DeviceException($"Такой порт - {portNum} уже занят");
             }
 
             if (typeDevice == TypeDevice.VoltMeter)
@@ -42,13 +38,12 @@ namespace Vips
                 };
                 if (!device.Config(portNum, baudRate, stopBits, checkedTimes))
                 {
-                    return;
+                    throw new DeviceException($"Такой порт - {portNum} уже занят");
                 }
 
                 VoltMeters.Add(device);
-                Console.WriteLine($"устройство {device.Name} было добавлено в стенд");
+                Console.WriteLine($"Устройство {device.Name} было добавлено в стенд");
                 //уведомитиь
-                
             }
 
             if (typeDevice == TypeDevice.Thermometer)
@@ -100,7 +95,7 @@ namespace Vips
                 //уведомить
             }
 
-            boundsPorts.Add(portNum);
+            mainValidator.BusyPorts.Add(portNum);
             //TODO возможно уведомитьиь хотя наверное нет и вообще стоит ил делать так
         }
 
