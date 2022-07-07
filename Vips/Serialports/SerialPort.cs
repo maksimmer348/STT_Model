@@ -5,11 +5,12 @@ public class SerialPort
     private bool isWriteToSerialPort;
     public string Read()
     {
-        return "Serilal Data";
+        return "Ok1";
     }
 
     public void Write(string w)
     {
        
     }
+    
 }

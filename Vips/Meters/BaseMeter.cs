@@ -5,47 +5,124 @@ namespace Vips
     public class BaseMeter
     {
         public string Name { get; set; }
-        private TypeDevice type;
-        private BaseSerial port;
-        private BaseLibCmd libCmd = new();
-        
-        public bool Config(int portNum, int baudRate, int stopBits, int checkTimes = 1, bool check = true)
+        /// <summary>
+        /// Задается значение в секундах для проверки значений при запуске стенда
+        /// </summary>
+        public int DelayBetween { get; set; }
+        protected TypeDevice type;
+        protected BaseSerial port;
+        protected BaseLibCmd libCmd = new();
+        /// <summary>
+        /// Конфигурация компортра утройства
+        /// </summary>
+        /// <param name="portNum">Номер компорта</param>
+        /// <param name="baudRate">Бауд рейт компорта</param>
+        /// <param name="stopBits">Стоповые биты компорта</param>
+        /// <param name="check">Нужна ли проверка на коннект от утсройства</param>
+        /// <param name="checkedOnConnectTimes">Количество запросов на устройство в случае если не удалось получить ответ</param>
+        /// <returns></returns>
+        public virtual bool Config(int portNum, int baudRate, int stopBits, int checkedOnConnectTimes = 1)
         {
             port = new BaseSerial(portNum, baudRate, stopBits);
             
-            if (check)
+            if (checkedOnConnectTimes >= 1)
             {
-                return Checked(checkTimes);
+                return CheckedConnect(checkedOnConnectTimes);
             }
+
             return true;
         }
-
-        public bool Checked(int checkTimes = 1)
+        /// <summary>
+        /// Проверка устройства на коннект
+        /// </summary>
+        /// <param name="checkedOnConnectTimes">Количество попыток подключится к устройству</param>
+        /// <returns></returns>
+        /// <exception cref="DeviceException">Такого устройства, нет в библиотеке команд</exception>
+        public virtual bool CheckedConnect(int checkedOnConnectTimes = 1)
         {
-            //TODO если значение из компорта рано ожидаемому значению из библиотеки команд то тру
-            //return TransmitReceivedCmd("Status", Name) == ожидаемому из 
-            Console.WriteLine(Name + " не работает");
+            var selectCmd = libCmd.DeviceCommands
+                .FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == Name);
+
+            if (selectCmd.Value == null)
+            {
+                //TODO предложить добавить по этому иключению новое устройство
+                throw new DeviceException(
+                    $"Такого утройства {Name}, нет в библиотеке команд");
+            }
+
+            //Количество попыток досутчатся до прибора
+            for (int i = 0; i < checkedOnConnectTimes; i++)
+            {
+                //TODO задать задержку между командаой и ответом
+                //TODO заглушка вместо задержки 
+                int tempDelay = selectCmd.Value.Delay;
+                Console.WriteLine($"Задержка \"Checked\" {tempDelay} мс == \"TransmitReceivedCmd\"");
+                
+                string receive = TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
+                if (selectCmd.Value.Receive.Contains(receive))
+                {
+                    return true;
+                }
+            }
+
             return false;
         }
 
         /// <summary>
-        /// Отправка команды в устройство и прием команды из устройства
+        /// Отправка в устройство и прием СТАНДАРТНЫХ (есть в библиотеке команд) команд из устройства
         /// </summary>
         /// <param name="nameCommand">Имя команды например Status</param>
         /// <param name="nameDevice">Имя девайса например GPS-74303</param>
-        /// <param name="delay">Задержка между запросом и ответом</param>
+        /// <param name="delay">Задержка между запросом и ответом если 0, то используется стандартная из библиотеки команд</param>
         /// <param name="templateCommand">Будет ли использоватся стандартный ответ от прибора например GWInst</param>
-        /// <returns></returns>
-        public string TransmitReceivedCmd(string nameCommand, string nameDevice, int delay = 50)
+        /// <returns>Ответ от устройства</returns>
+        public string TransmitReceivedDefaultCmd(string nameCommand, int delay = 0)
         {
             var selectCmd = libCmd.DeviceCommands
-                .Where(x => x.Key.NameCmd == nameCommand)
-                .FirstOrDefault(x => x.Key.NameDevice == nameDevice);
+                .FirstOrDefault(x => x.Key.NameCmd == nameCommand && x.Key.NameDevice == Name);
 
-            port.Write(selectCmd.Value.Transmit);
-            //int delay = selectCmd.Delay;
-            string receive = port.Read();
+            if (selectCmd.Value == null)
+            {
+                throw new DeviceException(
+                    $"Такой команды - {nameCommand} или такого утройства {Name}, нет в библиотеке команд");
+            }
+
+            //TODO заглушка вместо задержки 
+            int tempDelay = delay;
+            Console.WriteLine($"Задержка \"TransmitReceivedDefaultCmd\" {tempDelay} мс == \"TransmitReceivedCmd\"");
+            
+            //Если в метод не передается иное значение задержки то используется стандартная из библиотеки команд
+            if (delay == 0)
+            {
+                //TODO задать задержку между командаой и ответом
+                //TODO заглушка вместо задержки 
+                tempDelay = selectCmd.Value.Delay;
+                Console.WriteLine($"Задержка \"TransmitReceivedDefaultCmd\" {tempDelay} мс == \"TransmitReceivedCmd\"");
+            }
+
+            return TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
+        }
+
+        /// <summary>
+        /// Отправка в устройство и прием команд из устройства
+        /// </summary>
+        /// <param name="cmd">Команда</param>
+        /// <param name="delay">Задержка между запросом и ответом</param>
+        /// <returns>Ответ от устройства</returns>
+        protected string TransmitReceivedCmd(string cmd, int delay)
+        {
+            port.WriteString(cmd);
+
+            //TODO заглушка вместо задержки 
+            int tempDelay = delay;
+            Console.WriteLine($"Задержка \"TransmitReceivedCmd\" {tempDelay} мс");
+            
+            string receive = port.ReadString();
+   
             return receive;
         }
+       
+
+        
     }
 }

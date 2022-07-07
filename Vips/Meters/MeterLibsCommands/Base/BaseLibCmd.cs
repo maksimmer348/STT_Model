@@ -19,9 +19,25 @@ namespace Vips
                 },
                 new MeterCmd()
                 {
+                    //запрос
                     Transmit = "IDN?",
+                    //ожидаемый ответ
                     Receive = "Ok",
+                    //задержка между запросом и ответом 
                     Delay = 50
+                });
+            
+            DeviceCommands.Add(
+                new MeterIdentCmd()
+                {
+                    NameDevice = "GPS-74303",
+                    NameCmd = "Voltage?"
+                },
+                new MeterCmd()
+                {
+                    //запрос
+                    Transmit = "Volt?",
+                    //ожидаемый ответ
                 });
 
             DeviceCommands.Add(new MeterIdentCmd()
@@ -48,7 +64,22 @@ namespace Vips
                 NameDevice = "DPO-3014",
                 NameCmd = "OutputOff"
             }, new MeterCmd() {Transmit = "cmdoff", Delay = 50});
+
+            DeviceCommands.Add(
+                new MeterIdentCmd()
+                {
+                    NameDevice = "Relay",
+                    NameCmd = "Status"
+                },
+                new MeterCmd()
+                {
+                    Transmit = "Status?",
+                    Receive = "Ok",
+                    Delay = 50
+                });
+            
         }
+
 
         /// <summary>
         /// Добавление команды в общую билиотеку команд
