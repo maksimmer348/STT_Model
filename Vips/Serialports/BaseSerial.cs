@@ -42,14 +42,12 @@ namespace Vips
                 throw new DeviceException($"Попытка прочитаь данные была неуспешной ошибка - {e}");
             }
         }
-
-
-
+        
         //TODO продолжить список
         //TODO уточнить название 
         private string[] invalidSymbols = new[] {"\n", "\r"};
 
-        protected double ReadDouble()
+        public double ReadDouble()
         {
             var receive = ReadString();
             foreach (var t in invalidSymbols)

@@ -5,13 +5,16 @@ namespace Vips
     public class BaseMeter
     {
         public string Name { get; set; }
+
         /// <summary>
         /// Задается значение в секундах для проверки значений при запуске стенда
         /// </summary>
         public int DelayBetween { get; set; }
+
         protected TypeDevice type;
         protected BaseSerial port;
         protected BaseLibCmd libCmd = new();
+
         /// <summary>
         /// Конфигурация компортра утройства
         /// </summary>
@@ -24,7 +27,7 @@ namespace Vips
         public virtual bool Config(int portNum, int baudRate, int stopBits, int checkedOnConnectTimes = 1)
         {
             port = new BaseSerial(portNum, baudRate, stopBits);
-            
+
             if (checkedOnConnectTimes >= 1)
             {
                 return CheckedConnect(checkedOnConnectTimes);
@@ -32,11 +35,12 @@ namespace Vips
 
             return true;
         }
+
         /// <summary>
         /// Проверка устройства на коннект
         /// </summary>
         /// <param name="checkedOnConnectTimes">Количество попыток подключится к устройству</param>
-        /// <returns></returns>
+        /// <returns>Успешна ли попытка коннекта</returns>
         /// <exception cref="DeviceException">Такого устройства, нет в библиотеке команд</exception>
         public virtual bool CheckedConnect(int checkedOnConnectTimes = 1)
         {
@@ -57,22 +61,26 @@ namespace Vips
                 //TODO заглушка вместо задержки 
                 int tempDelay = selectCmd.Value.Delay;
                 Console.WriteLine($"Задержка \"Checked\" {tempDelay} мс == \"TransmitReceivedCmd\"");
-                
+
                 string receive = TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
-                if (selectCmd.Value.Receive.Contains(receive))
+                //TODO разобратся шаблон ответа должен в сбее содержать ответ прибора или наоборот
+                if (receive.Contains(selectCmd.Value.Receive))
                 {
+                    Console.WriteLine($"Устройство {Name}, успешно прошло проверку");
+                    //Уведомить
                     return true;
                 }
             }
-
+            Console.WriteLine($"Устройство {Name}, не смогло пройти проверку");
+            //Уведомить
             return false;
         }
 
         /// <summary>
         /// Отправка в устройство и прием СТАНДАРТНЫХ (есть в библиотеке команд) команд из устройства
         /// </summary>
-        /// <param name="nameCommand">Имя команды например Status</param>
-        /// <param name="nameDevice">Имя девайса например GPS-74303</param>
+        /// <param name="nameCommand">Имя команды (например Status)</param>
+        /// <param name="nameDevice">Имя девайса (например GPS-74303)</param>
         /// <param name="delay">Задержка между запросом и ответом если 0, то используется стандартная из библиотеки команд</param>
         /// <param name="templateCommand">Будет ли использоватся стандартный ответ от прибора например GWInst</param>
         /// <returns>Ответ от устройства</returns>
@@ -90,7 +98,7 @@ namespace Vips
             //TODO заглушка вместо задержки 
             int tempDelay = delay;
             Console.WriteLine($"Задержка \"TransmitReceivedDefaultCmd\" {tempDelay} мс == \"TransmitReceivedCmd\"");
-            
+
             //Если в метод не передается иное значение задержки то используется стандартная из библиотеки команд
             if (delay == 0)
             {
@@ -99,7 +107,7 @@ namespace Vips
                 tempDelay = selectCmd.Value.Delay;
                 Console.WriteLine($"Задержка \"TransmitReceivedDefaultCmd\" {tempDelay} мс == \"TransmitReceivedCmd\"");
             }
-
+            
             return TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
         }
 
@@ -108,21 +116,20 @@ namespace Vips
         /// </summary>
         /// <param name="cmd">Команда</param>
         /// <param name="delay">Задержка между запросом и ответом</param>
+        /// <param name="receiveType"></param>
         /// <returns>Ответ от устройства</returns>
-        protected string TransmitReceivedCmd(string cmd, int delay)
+        public string TransmitReceivedCmd(string cmd, int delay)
         {
             port.WriteString(cmd);
 
             //TODO заглушка вместо задержки 
             int tempDelay = delay;
+
+            DelayBetween = delay;
             Console.WriteLine($"Задержка \"TransmitReceivedCmd\" {tempDelay} мс");
             
-            string receive = port.ReadString();
-   
-            return receive;
+            return  port.ReadString();
         }
-       
-
         
     }
 }

@@ -2,12 +2,13 @@
 {
     public class RelaySwitch : BaseMeter
     {
+
         public Vip TestVip { get; set; } = new Vip();
         
-        public override bool Config(int portNum, int baudRate, int stopBits, int checkedOnConnectTimes = 1)
+        public bool Config(int portNum, int baudRate, int stopBits, int checkedOnConnectTimes = 1, int delayBetween = 2000)
         {
             port = new BaseSerial(portNum, baudRate, stopBits);
-            
+            DelayBetween = delayBetween;
             if (checkedOnConnectTimes >= 1)
             {
                 return CheckedConnect(checkedOnConnectTimes);
@@ -30,8 +31,8 @@
                 Console.WriteLine($"Задержка \"Checked\" {tempDelay} мс == \"TransmitReceivedCmd\"");
                 
                 string receive = TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
-                
-                if (selectCmd.Value.Receive.Contains($"Ok"))
+                //TODO разобратся шаблон ответа должен в сбее содержать ответ прибора или наоборот
+                if (selectCmd.Value.Receive.Contains(receive))
                 {
                     return true;
                 }

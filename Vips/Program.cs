@@ -35,10 +35,11 @@ configVips.AddVip("4", 0);
 configVips.AddVip("5", 0);
 configVips.AddVip("6", 0);
 
+//configVips.ChangedTypeVips(0, new TypeVip() {MaxVoltageOut1 = 100, MaxVoltageOut2 = 200});
 int portNum = 1;
 //добавление приборв измерения в стенд
 //1 источник проверяет входной ток и входное напряжение
-stand.AddDevice(TypeDevice.VoltMeter, "GPS-74303", portNum++, 0, 8,0);
+stand.AddDevice(TypeDevice.VoltMeter, "GPS-74303", portNum++, 0, 8,1);
 //2 источник проверяет выходное напряжение 1 канал
 stand.AddDevice(TypeDevice.VoltMeter, "GPS-74303", portNum++, 0, 8,0);
 //3 источник проверяет выходное напряжение 2 канал
@@ -48,7 +49,6 @@ stand.AddDevice(TypeDevice.VoltMeter, "GPS-74303", portNum++, 0, 8, 0);
 stand.AddDevice(TypeDevice.Thermometer, "GDM-7433",portNum++ , 0, 8,0);
 //1 нагрузка нагружает выбранный ВИП
 stand.AddDevice(TypeDevice.Load, "GDM-4303",portNum++ , 0, 8,0);
-
 
 stand.AddDevice(TypeDevice.Relay, "1", portNum++, 0, 8,0, 2000);
 stand.AddDevice(TypeDevice.Relay, "2", portNum++, 0, 8,0, 2000);
@@ -63,9 +63,10 @@ stand.AddDevice(TypeDevice.Relay, "10", portNum++, 0, 8,0, 2000);
 stand.AddDevice(TypeDevice.Relay, "11", portNum++, 0, 8,0, 2000);
 stand.AddDevice(TypeDevice.Relay, "12", portNum++, 0, 8,0, 2000);
 
-
+stand.AddVips(configVips.Vips);
+stand.StandPrepareTest();
 //TODO првильно ли я все написал (надо чтобы обновлялось configVips.Vips, когда измененяется stand.Vips)
 //Если все ок добавляем Випы из конфигуратора в стенд 
-stand.Vips = configVips.Vips;
+//stand.Vips = configVips.Vips;
 //посе этого присваиваем каждому Випу его платку
-stand.Start();
+//stand.Start();

@@ -11,10 +11,13 @@ namespace Vips
 
         public BaseLibCmd()
         {
+            //команда с шаблоном ответа
             DeviceCommands.Add(
                 new MeterIdentCmd()
                 {
+                    //имя устройктсва
                     NameDevice = "GPS-74303",
+                    //имя команды
                     NameCmd = "Status"
                 },
                 new MeterCmd()
@@ -23,47 +26,87 @@ namespace Vips
                     Transmit = "IDN?",
                     //ожидаемый ответ
                     Receive = "Ok",
+                    //тип ожидаемого ответа - текстовый
+                    ReceiveType = TypeAnswer.Text,
                     //задержка между запросом и ответом 
                     Delay = 50
                 });
-            
+
+            //команда без шаблона ответа
             DeviceCommands.Add(
                 new MeterIdentCmd()
                 {
                     NameDevice = "GPS-74303",
+
+                    NameCmd = "Current?"
+                },
+                new MeterCmd()
+                {
+                    Transmit = "Curr?",
+
+                    ReceiveType = TypeAnswer.Number,
+                    Delay = 50
+                });
+
+            DeviceCommands.Add(new MeterIdentCmd()
+                {
+                    NameDevice = "GPS-90",
+                    NameCmd = "Status"
+                },
+                new MeterCmd()
+                {
+                    Transmit = "Status?",
+                    Receive = "GWInst", Delay = 50
+                });
+
+            DeviceCommands.Add(new MeterIdentCmd()
+            {
+                NameDevice = "DPO-3014",
+                NameCmd = "Status"
+            }, new MeterCmd()
+            {
+                Transmit = "HEH?",
+                Receive = "Ok", Delay = 50
+            });
+
+            DeviceCommands.Add(
+                new MeterIdentCmd()
+                {
+                    //имя устройктсва
+                    NameDevice = "GPS-74303",
+                    //имя команды
                     NameCmd = "Voltage?"
                 },
                 new MeterCmd()
                 {
                     //запрос
                     Transmit = "Volt?",
-                    //ожидаемый ответ
+                    //тип ожидаемого ответа - числовой
+                    ReceiveType = TypeAnswer.Number,
+
+                    Delay = 50
                 });
 
-            DeviceCommands.Add(new MeterIdentCmd()
-            {
-                NameDevice = "GPS-90",
-                NameCmd = "Status"
-            }, new MeterCmd() {Transmit = "Status?", Receive = "GWInst", Delay = 50});
-
-            DeviceCommands.Add(new MeterIdentCmd()
-            {
-                NameDevice = "DPO-3014",
-                NameCmd = "Status"
-            }, new MeterCmd() {Transmit = "HEH?", Receive = "Ok", Delay = 50});
 
             DeviceCommands.Add(new MeterIdentCmd()
             {
                 NameDevice = "DPO-3014",
                 NameCmd = "OutputOn",
-            }, new MeterCmd() {Transmit = "cmdon", Delay = 50});
-
+            }, new MeterCmd()
+            {
+                Transmit = "cmdon",
+                Delay = 50
+            });
 
             DeviceCommands.Add(new MeterIdentCmd()
             {
                 NameDevice = "DPO-3014",
                 NameCmd = "OutputOff"
-            }, new MeterCmd() {Transmit = "cmdoff", Delay = 50});
+            }, new MeterCmd()
+            {
+                Transmit = "cmdoff",
+                Delay = 50
+            });
 
             DeviceCommands.Add(
                 new MeterIdentCmd()
@@ -77,9 +120,7 @@ namespace Vips
                     Receive = "Ok",
                     Delay = 50
                 });
-            
         }
-
 
         /// <summary>
         /// Добавление команды в общую билиотеку команд
@@ -89,11 +130,22 @@ namespace Vips
         /// <param name="transmitCmd">Команда котороую нужно передать в прибор</param>
         /// <param name="receiveCmd">Ответ от прибора на команду</param>
         /// <param name="delayCmd">Задержка между передачей команды и приемом ответа</param>
+        /// <param name="type">Тип ответа (по умолчанию текстовый)</param>
         public void AddCommand(string nameCommand, string nameDevice, string transmitCmd, string receiveCmd,
-            int delayCmd)
+            int delayCmd, TypeAnswer type = TypeAnswer.Text)
         {
-            var tempIdentCmd = new MeterIdentCmd {NameCmd = nameCommand, NameDevice = nameDevice};
-            var tempCmd = new MeterCmd() {Transmit = transmitCmd, Receive = receiveCmd, Delay = delayCmd};
+            var tempIdentCmd = new MeterIdentCmd
+            {
+                NameCmd = nameCommand,
+                NameDevice = nameDevice
+            };
+            var tempCmd = new MeterCmd()
+            {
+                Transmit = transmitCmd,
+                Receive = receiveCmd,
+                ReceiveType = type,
+                Delay = delayCmd
+            };
             DeviceCommands.Add(tempIdentCmd, tempCmd);
 
             Console.WriteLine(
