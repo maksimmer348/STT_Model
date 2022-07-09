@@ -14,11 +14,7 @@ namespace Vips
 
         public ObservableCollection<RelaySwitch> Relays { get; set; } = new ObservableCollection<RelaySwitch>();
         //public ObservableCollection<Vip> Vips { get; set; } = new ObservableCollection<Vip>();
-
-
-        /// <summary>
-        /// 
-        /// </summary>
+        
         /// <summary>
         /// Добавление устройств в стенд
         /// </summary>
@@ -47,6 +43,7 @@ namespace Vips
                 };
                 if (!device.Config(portNum, baudRate, stopBits, checkedOnConnectTimes))
                 {
+                    //TODO разобрратся откуда убрать исключнение (оставить на реальное использование)
                     throw new DeviceException($"Вольтметр {device.Name}, нет ответа");
                 }
 
@@ -185,6 +182,7 @@ namespace Vips
                                                       $"выходное напряжение на {testVip.CurrentIn - typeVip.PrepareMaxCurrentIn}" +
                                                       " больше чем нужно");
                         }
+                        
                         //TODO нужно чтобы выполнялась парарельно 2 и 4 задачам
                         testVip.VoltageOut1 =
                             ReadDouble(VoltMeters[1]
@@ -197,6 +195,7 @@ namespace Vips
                                                       $"выходное напряжение на {testVip.VoltageOut1 - typeVip.PrepareMaxVoltageOut1}" +
                                                       " больше чем нужно");
                         }
+                        
                         //TODO нужно чтобы выполнялась парарельно 2 и 3 задачам
                         testVip.VoltageOut2 =
                             ReadDouble(VoltMeters[2]
@@ -209,6 +208,7 @@ namespace Vips
                                                       $"выходное напряжение на {testVip.VoltageOut2 - typeVip.PrepareMaxVoltageOut2}" +
                                                       " больше чем нужно");
                         }
+                        
                     }
                     //TODO тут будет большая задержка гдето секунды 2
                     delay = relay.DelayBetween;

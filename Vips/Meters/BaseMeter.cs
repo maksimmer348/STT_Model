@@ -61,14 +61,22 @@ namespace Vips
                 //TODO заглушка вместо задержки 
                 int tempDelay = selectCmd.Value.Delay;
                 Console.WriteLine($"Задержка \"Checked\" {tempDelay} мс == \"TransmitReceivedCmd\"");
-
-                string receive = TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
-                //TODO разобратся шаблон ответа должен в сбее содержать ответ прибора или наоборот
-                if (receive.Contains(selectCmd.Value.Receive))
+                try
                 {
-                    Console.WriteLine($"Устройство {Name}, успешно прошло проверку");
-                    //Уведомить
-                    return true;
+                    string receive = TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
+                    
+                    //TODO разобратся шаблон ответа должен в сбее содержать ответ прибора или наоборот
+                    if (receive.Contains(selectCmd.Value.Receive))
+                    {
+                        Console.WriteLine($"Устройство {Name}, успешно прошло проверку");
+                        //Уведомить
+                        return true;
+                    }
+                }
+                catch (Exception e)
+                {
+                    //TODO пока оставить так в зависимотсти от того что я хочу сделать изменитьь это
+                   continue;
                 }
             }
             Console.WriteLine($"Устройство {Name}, не смогло пройти проверку");
