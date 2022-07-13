@@ -1,4 +1,9 @@
 ﻿using System;
+using Microsoft.Extensions.Logging.Abstractions;
+using RJCP.IO.Ports;
+using SerialPortLib;
+using System.Threading;
+
 
 namespace Vips
 {
@@ -9,11 +14,15 @@ namespace Vips
         /// <summary>
         /// Задается значение в секундах для проверки значений при запуске стенда
         /// </summary>
-        public int DelayBetween { get; set; }
+        public string GetPortNum { get; set; }
 
-        protected TypeDevice type;
-        protected BaseSerial port;
+        public TypeDevice Type;
         protected BaseLibCmd libCmd = new();
+
+        protected SerialPortInput port;
+        public Action<BaseMeter,byte[]> Receive;
+        public Action<BaseMeter, bool> ConnectPort;
+        public Action<BaseMeter, bool> ConnectDevice;
 
         /// <summary>
         /// Конфигурация компортра утройства
@@ -24,53 +33,75 @@ namespace Vips
         /// <param name="check">Нужна ли проверка на коннект от утсройства</param>
         /// <param name="checkedOnConnectTimes">Количество запросов на устройство в случае если не удалось получить ответ</param>
         /// <returns></returns>
-        public virtual bool Config(int portNum, int baudRate, int stopBits, int checkedOnConnectTimes = 1)
+        public void Config(string pornName, int baud, StopBits stopBits, Parity parity, DataBits dataBits)
         {
-            port = new BaseSerial(portNum, baudRate, stopBits);
-
-            if (checkedOnConnectTimes >= 1)
-            {
-                return CheckedConnect(checkedOnConnectTimes);
-            }
-
-            return true;
+            port = new SerialPortInput(new NullLogger<SerialPortInput>());
+            port.SetPort(pornName, baud, stopBits, parity, dataBits);
+            GetPortNum = pornName;
+            port.ConnectionStatusChanged += OnPortOnConnectionStatusChanged;
+            port.MessageReceived += OnPortOnMessageReceived;
         }
+
+        public bool PortConnect()
+        {
+            return port.Connect();
+        }
+
+        public void PortDisconnect()
+        {
+            port.Disconnect();
+        }
+
+        void OnPortOnConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs args)
+        {
+            ConnectPort.Invoke(this, args.Connected);
+        }
+        
+        void OnPortOnMessageReceived(object sender, MessageReceivedEventArgs args)
+        {
+            var data = System.Text.Encoding.UTF8.GetString(args.Data);
+           var selectCmd = libCmd.DeviceCommands
+               .FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == Name);
+            if (data.Contains(selectCmd.Value.Receive))
+            {
+                ConnectDevice.Invoke(this, true);
+            }
+        }
+
 
         /// <summary>
         /// Проверка устройства на коннект
         /// </summary>
         /// <param name="checkedOnConnectTimes">Количество попыток подключится к устройству</param>
+        /// <param name="checkCmd">Команда проверки не из библиотеки (если пусто будет исользована команда из библиотеки "Status")</param>
         /// <returns>Успешна ли попытка коннекта</returns>
         /// <exception cref="DeviceException">Такого устройства, нет в библиотеке команд</exception>
-        public virtual bool CheckedConnect(int checkedOnConnectTimes = 1)
+        public bool CheckedConnect(int checkedOnConnectTimes = 1, string checkCmd = "")
         {
             var selectCmd = libCmd.DeviceCommands
                 .FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == Name);
 
             if (selectCmd.Value == null)
             {
-                //TODO предложить добавить по этому иключению новое устройство
+                //TODO M предложить добавить по этому иключению новое устройство
                 throw new DeviceException(
                     $"Такого утройства {Name}, нет в библиотеке команд");
             }
 
             //Количество попыток досутчатся до прибора
+            //TODO если достучались с первого раза то второй ненужно
             for (int i = 0; i < checkedOnConnectTimes; i++)
             {
-                //TODO задать задержку между командаой и ответом
-                //TODO заглушка вместо задержки 
-                int tempDelay = selectCmd.Value.Delay;
-                Console.WriteLine($"Задержка \"Checked\" {tempDelay} мс == \"TransmitReceivedCmd\"");
-
-                string receive = TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
-                //TODO разобратся шаблон ответа должен в сбее содержать ответ прибора или наоборот
-                if (receive.Contains(selectCmd.Value.Receive))
+                if (string.IsNullOrWhiteSpace(checkCmd))
                 {
-                    Console.WriteLine($"Устройство {Name}, успешно прошло проверку");
-                    //Уведомить
-                    return true;
+                    TransmitReceivedCmd(selectCmd.Value.Transmit);
+                }
+                else
+                {
+                    TransmitReceivedCmd(checkCmd);
                 }
             }
+
             Console.WriteLine($"Устройство {Name}, не смогло пройти проверку");
             //Уведомить
             return false;
@@ -84,7 +115,7 @@ namespace Vips
         /// <param name="delay">Задержка между запросом и ответом если 0, то используется стандартная из библиотеки команд</param>
         /// <param name="templateCommand">Будет ли использоватся стандартный ответ от прибора например GWInst</param>
         /// <returns>Ответ от устройства</returns>
-        public string TransmitReceivedDefaultCmd(string nameCommand, int delay = 0)
+        public void TransmitReceivedDefaultCmd(string nameCommand, int delay = 0)
         {
             var selectCmd = libCmd.DeviceCommands
                 .FirstOrDefault(x => x.Key.NameCmd == nameCommand && x.Key.NameDevice == Name);
@@ -95,20 +126,13 @@ namespace Vips
                     $"Такой команды - {nameCommand} или такого утройства {Name}, нет в библиотеке команд");
             }
 
-            //TODO заглушка вместо задержки 
-            int tempDelay = delay;
-            Console.WriteLine($"Задержка \"TransmitReceivedDefaultCmd\" {tempDelay} мс == \"TransmitReceivedCmd\"");
-
             //Если в метод не передается иное значение задержки то используется стандартная из библиотеки команд
             if (delay == 0)
             {
-                //TODO задать задержку между командаой и ответом
-                //TODO заглушка вместо задержки 
-                tempDelay = selectCmd.Value.Delay;
-                Console.WriteLine($"Задержка \"TransmitReceivedDefaultCmd\" {tempDelay} мс == \"TransmitReceivedCmd\"");
+                delay = selectCmd.Value.Delay;
             }
-            
-            return TransmitReceivedCmd(selectCmd.Value.Transmit, tempDelay);
+
+            TransmitReceivedCmd(selectCmd.Value.Transmit);
         }
 
         /// <summary>
@@ -118,18 +142,13 @@ namespace Vips
         /// <param name="delay">Задержка между запросом и ответом</param>
         /// <param name="receiveType"></param>
         /// <returns>Ответ от устройства</returns>
-        public string TransmitReceivedCmd(string cmd, int delay)
+        public void TransmitReceivedCmd(string cmd)
         {
-            port.WriteString(cmd);
-
-            //TODO заглушка вместо задержки 
-            int tempDelay = delay;
-
-            DelayBetween = delay;
-            Console.WriteLine($"Задержка \"TransmitReceivedCmd\" {tempDelay} мс");
+            var message = System.Text.Encoding.UTF8.GetBytes(cmd + "\n");
+            port.SendMessage(message);
             
-            return  port.ReadString();
+            //Thread.Sleep(delay);
+            // Console.WriteLine($"Задержка \"TransmitReceivedCmd\" {delay} мс");
         }
-        
     }
 }

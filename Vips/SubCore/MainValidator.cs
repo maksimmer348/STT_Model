@@ -28,12 +28,12 @@ public class MainValidator
 
     #region Devices
 
-    public List<int> BusyPorts = new List<int>();
+    public List<string> BusyPorts = new List<string>();
 
     
     #endregion
 
-    public bool ValidateCollisionPort(int portNum)
+    public bool ValidateCollisionPort(string portNum)
     {
         if (BusyPorts.All(x => x != portNum))
         {

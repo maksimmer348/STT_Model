@@ -1,6 +1,6 @@
 ﻿namespace Vips;
 
-public class Thread
+public class MyThread
 {
     
 }

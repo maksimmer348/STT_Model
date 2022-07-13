@@ -8,4 +8,12 @@
         <LangVersion>10</LangVersion>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="SerialPortLib" Version="1.0.23" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Serialports" />
+    </ItemGroup>
+
 </Project>

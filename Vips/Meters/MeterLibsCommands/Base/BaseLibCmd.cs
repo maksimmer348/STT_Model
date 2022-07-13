@@ -16,7 +16,7 @@ namespace Vips
                 new MeterIdentCmd()
                 {
                     //имя устройктсва
-                    NameDevice = "GPS-74303",
+                    NameDevice = "GDM-78255A",
                     //имя команды
                     NameCmd = "Status"
                 },
@@ -25,7 +25,7 @@ namespace Vips
                     //запрос
                     Transmit = "IDN?",
                     //ожидаемый ответ
-                    Receive = "Ok",
+                    Receive = "78255",
                     //тип ожидаемого ответа - текстовый
                     ReceiveType = TypeAnswer.Text,
                     //задержка между запросом и ответом 
@@ -116,7 +116,20 @@ namespace Vips
                 },
                 new MeterCmd()
                 {
-                    Transmit = "Status?",
+                    Transmit = "On",
+                    Receive = "",
+                    Delay = 5000
+                });
+            
+            DeviceCommands.Add(
+                new MeterIdentCmd()
+                {
+                    NameDevice = "Relay",
+                    NameCmd = "Status"
+                },
+                new MeterCmd()
+                {
+                    Transmit = "Off",
                     Receive = "Ok",
                     Delay = 50
                 });
