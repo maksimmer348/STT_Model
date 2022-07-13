@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using RJCP.IO.Ports;
 using SerialPortLib;
@@ -41,7 +42,7 @@ namespace Vips
             port.ConnectionStatusChanged += OnPortOnConnectionStatusChanged;
             port.MessageReceived += OnPortOnMessageReceived;
         }
-
+        
         public bool PortConnect()
         {
             return port.Connect();
@@ -67,8 +68,7 @@ namespace Vips
                 ConnectDevice.Invoke(this, true);
             }
         }
-
-
+        
         /// <summary>
         /// Проверка устройства на коннект
         /// </summary>

@@ -5,19 +5,6 @@ using RJCP.IO.Ports;
 using SerialPortLib;
 using Vips;
 
-List<string> soft = new List<string>(){ "Microsoft", "Google", "Apple"};
-List<string>  hard =  new List<string>(){ "Googile","Microsoft","Apple"};
- 
-// разность последовательностей
-var result = soft.Except(hard).ToList();
-
-if (result.Any())
-{
-    Console.WriteLine("!");
-}
-foreach (string s in result)
-    Console.WriteLine(s);
-return;
 
 Stand stand = new Stand();
 ConfigVips configVips = new ConfigVips();
@@ -29,7 +16,8 @@ ConfigVips configVips = new ConfigVips();
 // configVips.AddVip(wrN, Int32.Parse(wrT));
 //
 // Console.WriteLine("введите номер випа");
-// wrN = Console.ReadLine();
+// w
+// rN = Console.ReadLine();
 // configVips.AddVip(wrN, Int32.Parse(wrT));
 //
 // Console.WriteLine("введите номер випа");
@@ -68,7 +56,7 @@ string portNumRelays = "COM31";
 StopBits stopBitsRelays = StopBits.One;
 Parity parityRelays = Parity.None;
 DataBits dataBitsRelays = DataBits.Eight;
-stand.AddRelays(TypeDevice.Relay, portNumRelays , 9600, stopBitsRelays,parityRelays, dataBitsRelays, 12);
+stand.AddRelays( portNumRelays , 9600, stopBitsRelays,parityRelays, dataBitsRelays, 12);
 //stand.AddDevice(TypeDevice.Relay, "2", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
 // stand.AddDevice(TypeDevice.Relay, "3", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
 // stand.AddDevice(TypeDevice.Relay, "4", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
@@ -80,12 +68,20 @@ stand.AddRelays(TypeDevice.Relay, portNumRelays , 9600, stopBitsRelays,parityRel
 // stand.AddDevice(TypeDevice.Relay, "10", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
 // stand.AddDevice(TypeDevice.Relay, "11", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
 // stand.AddDevice(TypeDevice.Relay, "12", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-
-//stand.CheckDevices(1);
-
 stand.AddVips(configVips.Vips);
+var devicesList = await stand.CheckConnectPort(1);
+if (!devicesList.Any())
+{
+    devicesList = await stand.CheckConnectDevices(1);
+    if (!devicesList.Any())
+    {
+        stand.StandPrepareTest();
+    }
+}
 
-stand.StandPrepareTest();
+//var devicesL = await stand.CheckConnectPort(1);
+
+//stand.StandPrepareTest();
 //TODO првильно ли я все написал (надо чтобы обновлялось configVips.Vips, когда измененяется stand.Vips)
 //Если все ок добавляем Випы из конфигуратора в стенд 
 //stand.Vips = configVips.Vips;

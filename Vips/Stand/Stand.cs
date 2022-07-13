@@ -11,10 +11,26 @@ namespace Vips
     {
         private MainValidator mainValidator = new MainValidator();
         public ObservableCollection<BaseMeter> Devices { get; set; } = new ObservableCollection<BaseMeter>();
-        public ObservableCollection<BaseMeter> tempDevices { get; set; } = new ObservableCollection<BaseMeter>();
+        public ObservableCollection<BaseMeter> TempDevices { get; set; } = new ObservableCollection<BaseMeter>();
 
         public ObservableCollection<RelaySwitch> Relays { get; set; } = new ObservableCollection<RelaySwitch>();
-        //public ObservableCollection<VoltMeter> VoltMeters { get; set; } = new ObservableCollection<VoltMeter>();
+
+        //можно получать отденый списо из выбраных классов
+        public ObservableCollection<VoltMeter> VoltMeters =>
+            new(Devices.OfType<VoltMeter>());
+
+        public Stand()
+        {
+            ConnectDevicesStatus += OnErrorConnectDevices;
+        }
+
+        public void OnErrorConnectDevices(ObservableCollection<BaseMeter> obj)
+        {
+            foreach (var meter in obj)
+            {
+                Console.WriteLine($"Устройство {meter.Name} на порту {meter.GetPortNum} не функционирует");
+            }
+        }
         //public ObservableCollection<Thermometer> Thermometers { get; set; } = new ObservableCollection<Thermometer>();
         //public ObservableCollection<Load> Loads { get; set; } = new ObservableCollection<Load>();
         //public ObservableCollection<Vip> Vips { get; set; } = new ObservableCollection<Vip>();
@@ -93,7 +109,7 @@ namespace Vips
             }
         }
 
-        public void AddRelays(TypeDevice typeDevice, string pornName, int baud, StopBits stopBits,
+        public void AddRelays(string pornName, int baud, StopBits stopBits,
             Parity parity, DataBits dataBits, int count = 12)
         {
             if (!mainValidator.ValidateCollisionPort(pornName))
@@ -108,16 +124,12 @@ namespace Vips
                     Type = TypeDevice.Relay,
                     Name = $"{count}"
                 };
+
                 device.Config(pornName, baud, stopBits, parity, dataBits);
                 device.ConnectPort += OnConnectPortDelay;
                 device.ConnectDevice += OnCheckDelay;
                 device.Receive += OnReceiveDelay;
                 Relays.Add(device);
-                //TODO пернести в отдельный метод
-                // if (!device.Config(portNum, baudRate, stopBits, checkedOnConnectTimes))
-                // {
-                //throw new RelayException($"Реле {device.Name}, нет ответа");
-                // }
 
                 Console.WriteLine($"Реле {device.Name} было добавлено в стенд");
                 //уведомить
@@ -129,56 +141,46 @@ namespace Vips
             }
         }
 
-        public void CheckConnectPort(int checkedOnConnectTimes, int delay = 50)
+        public async Task<List<BaseMeter>> CheckConnectPort(int checkedOnConnectTimes, int delay = 50)
         {
+            //TODO когда нажали кнопку делать ее disabled
             foreach (var device in Devices)
             {
                 device.PortConnect();
-
-                Task.Run(async () =>
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(delay));
-                    CheckConnectDevice();
-                }).ConfigureAwait(false);
             }
-            tempDevices.Clear();
+            await Task.Delay(TimeSpan.FromMilliseconds(delay));
+            return CheckConnectDevice();
         }
 
-        public void CheckConnectDevices(int checkedOnConnectTimes, int delay = 150)
+        public async Task<List<BaseMeter>> CheckConnectDevices(int checkedOnConnectTimes, int delay = 150)
         {
             foreach (var device in Devices)
             {
                 device.CheckedConnect(checkedOnConnectTimes);
-
-                Task.Run(async () =>
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(delay));
-                    CheckConnectDevice();
-                }).ConfigureAwait(false);
             }
-            tempDevices.Clear();
+            await Task.Delay(TimeSpan.FromMilliseconds(delay));
+           return CheckConnectDevice();
         }
 
-        private void CheckConnectDevice()
+        private event Action<ObservableCollection<BaseMeter>> ConnectDevicesStatus;
+
+        private List<BaseMeter> CheckConnectDevice()
         {
-           var devices =  Devices.Except(tempDevices).ToList();
-           if (devices.Any())
-           {
-               foreach (var device in devices)
-               {
-                   throw new DeviceException($"Устройство {device.Name} на порту {device.GetPortNum} не отвечает");
-               }
-           }
+            var devices = Devices.Except(TempDevices).ToList();
+            //ConnectDevicesStatus?.Invoke(new ObservableCollection<BaseMeter>(devices));
+            TempDevices.Clear();
+            return devices;
         }
 
         public void OnConnectPort(BaseMeter baseMeter, bool connect)
         {
             if (connect)
             {
-                tempDevices.Add(baseMeter);
+                TempDevices.Add(baseMeter);
             }
             else
             {
+                //TODO возможно использовать событие 
                 throw new DeviceException($"Порт {baseMeter.GetPortNum} не отвечает");
             }
         }
@@ -187,17 +189,17 @@ namespace Vips
         {
             if (check)
             {
-                tempDevices.Add(baseMeter);
+                TempDevices.Add(baseMeter);
             }
             else
             {
-                throw new DeviceException($"Устройство {baseMeter.Type} - {baseMeter.Name},на порту {baseMeter.GetPortNum} неверня команда");
+                throw new DeviceException(
+                    $"Устройство {baseMeter.Type} - {baseMeter.Name},на порту {baseMeter.GetPortNum} неверня команда");
             }
         }
 
         public void OnReceive(BaseMeter arg1, byte[] receive)
         {
-            
         }
 
         private void OnConnectPortDelay(BaseMeter arg1, bool arg2)

@@ -22,7 +22,6 @@
         /// Задержка между передачей команды и приемом ответа 
         /// </summary>
         public int Delay { get; set; }
-
         protected bool Equals(MeterCmd other)
         {
             return Transmit == other.Transmit && Receive == other.Receive && Delay == other.Delay;
