@@ -11,13 +11,13 @@ namespace Vips
     {
         private MainValidator mainValidator = new MainValidator();
         public ObservableCollection<BaseMeter> Devices { get; set; } = new ObservableCollection<BaseMeter>();
-        public ObservableCollection<BaseMeter> TempDevices { get; set; } = new ObservableCollection<BaseMeter>();
+
+        public ObservableCollection<BaseMeter> TempVerifiedDevices { get; set; } =
+            new ObservableCollection<BaseMeter>();
 
         public ObservableCollection<RelaySwitch> Relays { get; set; } = new ObservableCollection<RelaySwitch>();
 
-        //можно получать отденый списо из выбраных классов
-        public ObservableCollection<VoltMeter> VoltMeters =>
-            new(Devices.OfType<VoltMeter>());
+        private event Action<ObservableCollection<BaseMeter>> ConnectDevicesStatus;
 
         public Stand()
         {
@@ -31,12 +31,6 @@ namespace Vips
                 Console.WriteLine($"Устройство {meter.Name} на порту {meter.GetPortNum} не функционирует");
             }
         }
-        //public ObservableCollection<Thermometer> Thermometers { get; set; } = new ObservableCollection<Thermometer>();
-        //public ObservableCollection<Load> Loads { get; set; } = new ObservableCollection<Load>();
-        //public ObservableCollection<Vip> Vips { get; set; } = new ObservableCollection<Vip>();
-        //public ObservableCollection<BaseMeter> ConnectedPorts { get; set; } = new ObservableCollection<BaseMeter>();
-        //public ObservableCollection<BaseMeter> ConnectedDevices { get; set; } = new ObservableCollection<BaseMeter>();
-        //protected ManualResetEvent Waiting = new ManualResetEvent(true);
 
         /// <summary>
         /// Добавление устройств в стенд
@@ -48,11 +42,10 @@ namespace Vips
         /// <param name="stopBits">Стоповый Бит устройства</param>
         /// <param name="parity">Parity bits</param>
         /// <param name="dataBits">Колво байт в команде</param>
-        /// <param name="checkedOnConnectTimes">Количество проверок на коннект</param>
-        /// <param name="delayBetween">Задержка между переключенииями устройств</param>
-        /// <exception cref="DeviceException"></exception>
+        /// <param name="dtr">Включить 12 вольт в компорте</param>
+        /// <exception cref="DeviceException">Такой компорт уже занят</exception>
         public void AddDevice(TypeDevice typeDevice, string nameDevice, string pornName, int baud, StopBits stopBits,
-            Parity parity, DataBits dataBits)
+            Parity parity, DataBits dataBits, bool dtr = false)
         {
             if (!mainValidator.ValidateCollisionPort(pornName))
             {
@@ -66,9 +59,9 @@ namespace Vips
                     Type = TypeDevice.VoltMeter,
                     Name = nameDevice,
                 };
-                device.Config(pornName, baud, stopBits, parity, dataBits);
+                device.Config(pornName, baud, stopBits, parity, dataBits, dtr);
                 device.ConnectPort += OnConnectPort;
-                device.ConnectDevice += OnCheckDevice;
+                device.ConnectDevice += OnCheckCmdDevice;
                 device.Receive += OnReceive;
 
                 Devices.Add(device);
@@ -82,9 +75,9 @@ namespace Vips
                 {
                     Name = nameDevice,
                 };
-                device.Config(pornName, baud, stopBits, parity, dataBits);
+                device.Config(pornName, baud, stopBits, parity, dataBits, dtr);
                 device.ConnectPort += OnConnectPort;
-                device.ConnectDevice += OnCheckDevice;
+                device.ConnectDevice += OnCheckCmdDevice;
                 device.Receive += OnReceive;
 
                 Devices.Add(device);
@@ -98,17 +91,46 @@ namespace Vips
                 {
                     Name = nameDevice,
                 };
-                device.Config(pornName, baud, stopBits, parity, dataBits);
+                device.Config(pornName, baud, stopBits, parity, dataBits, dtr);
                 device.ConnectPort += OnConnectPort;
-                device.ConnectDevice += OnCheckDevice;
+                device.ConnectDevice += OnCheckCmdDevice;
                 device.Receive += OnReceive;
 
                 Devices.Add(device);
                 Console.WriteLine($"Устройство {device.Type}, {device.Name} было добавлена в стенд");
                 //уведомитть
             }
+
+            //TODO для тестов
+            if (typeDevice == TypeDevice.Supply)
+            {
+                var device = new Supply
+                {
+                    Type = TypeDevice.VoltMeter,
+                    Name = nameDevice,
+                };
+                device.Config(pornName, baud, stopBits, parity, dataBits, dtr);
+                device.ConnectPort += OnConnectPort;
+                device.ConnectDevice += OnCheckCmdDevice;
+                device.Receive += OnReceive;
+
+                Devices.Add(device);
+                Console.WriteLine($"Устройство {device.Type}, {device.Name} было добавлена в стенд");
+                //уведомитиь
+            }
+            //
         }
 
+        /// <summary>
+        /// Добавление релейных плат в стенд
+        /// </summary>
+        /// <param name="pornName">Номер порта устройства</param>
+        /// <param name="baud">Бауд Рейт устройства</param>
+        /// <param name="stopBits">Стоповый Бит устройства</param>
+        /// <param name="parity">Parity bits</param>
+        /// <param name="dataBits">Колво байт в команде</param>
+        /// <param name="count">Общее колво релейных плат</param>
+        /// <exception cref="DeviceException">Такой компорт уже занят</exception>
         public void AddRelays(string pornName, int baud, StopBits stopBits,
             Parity parity, DataBits dataBits, int count = 12)
         {
@@ -141,42 +163,85 @@ namespace Vips
             }
         }
 
-        public async Task<List<BaseMeter>> CheckConnectPort(int checkedOnConnectTimes, int delay = 50)
+        /// <summary>
+        /// Проверка на физическое существование порта  
+        /// </summary>
+        /// <param name="delay">Общая задержка проверки (по умолчанию 50)</param>
+        /// <returns></returns>
+        public async Task<List<BaseMeter>> CheckConnectPort(int delay = 50)
         {
             //TODO когда нажали кнопку делать ее disabled
             foreach (var device in Devices)
             {
                 device.PortConnect();
             }
+
             await Task.Delay(TimeSpan.FromMilliseconds(delay));
-            return CheckConnectDevice();
+            return CheckDevice();
         }
 
-        public async Task<List<BaseMeter>> CheckConnectDevices(int checkedOnConnectTimes, int delay = 150)
+        /// <summary>
+        /// Проверка устройств не занят ли порт и пингуются ли они
+        /// </summary>
+        /// <param name="checkedOnConnectTimes">Количество проверок (по умолчанию 1)</param>
+        /// <param name="delay">Общая задержка проверки (если 0 то используется самая большая из представленых прибороов)</param>
+        /// <returns></returns>
+        public async Task<List<BaseMeter>> CheckConnectDevices(int checkedOnConnectTimes = 2, int delay = 0)
         {
+            //список для задержек из приборов
+            var delaysList = new List<int>();
+            //временный список дефетктивынх приборов
+            var tempErrorDevices = new List<BaseMeter>();
+            
             foreach (var device in Devices)
             {
-                device.CheckedConnect(checkedOnConnectTimes);
+                for (int i = 0; i < 3; i++)
+                {
+                    //отправляем команду проверки на устройство
+                    device.CheckedConnectDevice();
+                    
+                    //добавлено для выбора самой большой задержки из приборов в общую задержку
+                    delaysList.Add(device.Delay);
+                    
+                    //если общая задержка не указана
+                    if (delay == 0)
+                    {
+                        //используем самую большую задержку из всех проверяемых приборов
+                        delay = delaysList.Max();
+                    }
+                    //ждем (если по прношесвтии этого времени в tempErrorDevices чтот появится значит проверка не прошла)
+                    await Task.Delay(TimeSpan.FromMilliseconds(delay));
+                    tempErrorDevices = CheckDevice();
+                    //TODO как сделать несолькок проверок если не проходит в первый раз с ожиданием (2 сек гденть)
+                    // if (!tempErrorDevices.Any())
+                    // {
+                    //     break;
+                    // }
+                }
             }
-            await Task.Delay(TimeSpan.FromMilliseconds(delay));
-           return CheckConnectDevice();
+            return tempErrorDevices;
         }
-
-        private event Action<ObservableCollection<BaseMeter>> ConnectDevicesStatus;
-
-        private List<BaseMeter> CheckConnectDevice()
+        
+        /// <summary>
+        /// Проверка устройтва командой
+        /// </summary>
+        /// <returns></returns>
+        private List<BaseMeter> CheckDevice()
         {
-            var devices = Devices.Except(TempDevices).ToList();
-            //ConnectDevicesStatus?.Invoke(new ObservableCollection<BaseMeter>(devices));
-            TempDevices.Clear();
-            return devices;
+            //сравниваем 
+            var tempErrorDevices = Devices.Except(TempVerifiedDevices).ToList();
+            TempVerifiedDevices.Clear();
+            return tempErrorDevices;
         }
-
+        /// <summary>
+        /// Проверка компорта свободный/несвободный
+        /// </summary>
+        /// <returns></returns>
         public void OnConnectPort(BaseMeter baseMeter, bool connect)
         {
             if (connect)
             {
-                TempDevices.Add(baseMeter);
+                TempVerifiedDevices.Add(baseMeter);
             }
             else
             {
@@ -185,11 +250,11 @@ namespace Vips
             }
         }
 
-        public void OnCheckDevice(BaseMeter baseMeter, bool check)
+        public void OnCheckCmdDevice(BaseMeter baseMeter, bool check)
         {
             if (check)
             {
-                TempDevices.Add(baseMeter);
+                TempVerifiedDevices.Add(baseMeter);
             }
             else
             {

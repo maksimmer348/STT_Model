@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="SerialPortLib" Version="1.0.23" />
+      <ProjectReference Include="..\..\libs\serialport-lib-dotnet-master\SerialPortLib\SerialPortLib.csproj" />
     </ItemGroup>
 
 </Project>

@@ -10,42 +10,84 @@ namespace Vips
 {
     public class BaseMeter
     {
+        /// <summary>
+        /// Имя прибора
+        /// </summary>
         public string Name { get; set; }
+
+        /// <summary>
+        /// Тип прибора
+        /// </summary>
+        public TypeDevice Type;
 
         /// <summary>
         /// Задается значение в секундах для проверки значений при запуске стенда
         /// </summary>
-        public string GetPortNum { get; set; }
+        public int Delay { get; private set; }
 
-        public TypeDevice Type;
+        /// <summary>
+        /// Компорт прибора
+        /// </summary>
+        protected SerialPortInput port;
+
+        /// <summary>
+        /// Количество пингов если прибор выдал ошибку
+        /// </summary>
+        public int PingCountIfError { get; private set; }
+
+        /// <summary>
+        /// Ожидлаемое начало строки если прибор выдал ошибку
+        /// </summary>
+        public string? StartOfStringIfError { get; set; }
+
+        /// <summary>
+        /// Ожидлаемое окончание строки если прибор выдал ошибку
+        /// </summary>
+        public string EndOfStringIfError { get; private set; }
+
+        /// <summary>
+        /// Получение номера порта
+        /// </summary>
+        public string GetPortNum { get; private set; }
+
+        /// <summary>
+        /// DTR прибора
+        /// </summary>
+        private bool dtr;
+
+        /// <summary>
+        /// Класс библиотеки
+        /// </summary>
         protected BaseLibCmd libCmd = new();
 
-        protected SerialPortInput port;
-        public Action<BaseMeter,byte[]> Receive;
+        public Action<BaseMeter, byte[]> Receive;
         public Action<BaseMeter, bool> ConnectPort;
         public Action<BaseMeter, bool> ConnectDevice;
 
         /// <summary>
         /// Конфигурация компортра утройства
         /// </summary>
-        /// <param name="portNum">Номер компорта</param>
-        /// <param name="baudRate">Бауд рейт компорта</param>
+        /// <param name="pornName">Номер компорта</param>
+        /// <param name="baud">Бауд рейт компорта</param>
         /// <param name="stopBits">Стоповые биты компорта</param>
-        /// <param name="check">Нужна ли проверка на коннект от утсройства</param>
-        /// <param name="checkedOnConnectTimes">Количество запросов на устройство в случае если не удалось получить ответ</param>
+        /// <param name="parity">Parity bits</param>
+        /// <param name="dataBits">Data bits count</param>
+        /// <param name="dtr"></param>
         /// <returns></returns>
-        public void Config(string pornName, int baud, StopBits stopBits, Parity parity, DataBits dataBits)
+        public void Config(string pornName, int baud, StopBits stopBits, Parity parity, DataBits dataBits,
+            bool dtr = false)
         {
             port = new SerialPortInput(new NullLogger<SerialPortInput>());
             port.SetPort(pornName, baud, stopBits, parity, dataBits);
+            this.dtr = dtr;
             GetPortNum = pornName;
-            port.ConnectionStatusChanged += OnPortOnConnectionStatusChanged;
-            port.MessageReceived += OnPortOnMessageReceived;
+            port.ConnectionStatusChanged += OnPortConnectionStatusChanged;
+            port.MessageReceived += OnPortMessageReceived;
         }
-        
-        public bool PortConnect()
+
+        public void PortConnect()
         {
-            return port.Connect();
+            port.Connect();
         }
 
         public void PortDisconnect()
@@ -53,86 +95,108 @@ namespace Vips
             port.Disconnect();
         }
 
-        void OnPortOnConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs args)
+        //проверка порта
+        void OnPortConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs args)
         {
-            ConnectPort.Invoke(this, args.Connected);
+            bool conn = args.Connected;
+            ConnectPort.Invoke(this, conn);
+            port.DtrEnable = dtr;
+            //TODO для наглядности, потом убрать
+            Console.WriteLine($"ответ от порта {GetPortNum} - {conn}, устройство {Name}");
+            //
+        }
+
+        string str;
+        //ответ от прибора
+
+        private byte[] trashBytes = new byte[] {254, 252, 248, 255, 240};
+
+        string ClearReceive(byte[] receive)
+        {
+            List<byte> InList = receive.ToList();
+            foreach (var trashByte in trashBytes)
+            {
+                InList.Remove(trashByte);
+            }
+
+            return System.Text.Encoding.UTF8.GetString(InList.ToArray());
         }
         
-        void OnPortOnMessageReceived(object sender, MessageReceivedEventArgs args)
+        string GetBuffersString(string str)
         {
-            var data = System.Text.Encoding.UTF8.GetString(args.Data);
-           var selectCmd = libCmd.DeviceCommands
-               .FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == Name);
-            if (data.Contains(selectCmd.Value.Receive))
+            // EndOfStringIfError ="";
+            //StartOfStringIfError= "";
+             if (string.IsNullOrEmpty(StartOfStringIfError) && string.IsNullOrEmpty(EndOfStringIfError) && PingCountIfError <= 0) return str;
+             else if()
+             {
+                 
+             }
+             else if()
+             {
+                 
+             }
+        }
+
+
+        void OnPortMessageReceived(object sender, MessageReceivedEventArgs args)
+        {
+            //var data = System.Text.Encoding.UTF8.GetString(args.Data);
+            var data = ClearReceive(args.Data);
+            
+          
+            var answer = (data);
+            //TODO для наглядности, потом убрать
+            Console.WriteLine($"ответ от устройства {Name} - {answer}, порт {GetPortNum} ");
+            //
+
+            var selectCmd = libCmd.DeviceCommands
+                .FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == Name);
+            if (answer.Contains(selectCmd.Value.Receive))
             {
                 ConnectDevice.Invoke(this, true);
             }
         }
-        
+
         /// <summary>
         /// Проверка устройства на коннект
         /// </summary>
-        /// <param name="checkedOnConnectTimes">Количество попыток подключится к устройству</param>
-        /// <param name="checkCmd">Команда проверки не из библиотеки (если пусто будет исользована команда из библиотеки "Status")</param>
+        /// <param name="checkCmd">Команда проверки не из библиотеки (если пусто будет исользована команда "Status" и прибор из библиотеки )</param>
+        /// <param name="delay">Задержка на проверку (если 0 будет исользована из библиотеки )</param>
         /// <returns>Успешна ли попытка коннекта</returns>
         /// <exception cref="DeviceException">Такого устройства, нет в библиотеке команд</exception>
-        public bool CheckedConnect(int checkedOnConnectTimes = 1, string checkCmd = "")
+        public void CheckedConnectDevice(string checkCmd = "", int delay = 0)
         {
-            var selectCmd = libCmd.DeviceCommands
-                .FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == Name);
-
-            if (selectCmd.Value == null)
-            {
-                //TODO M предложить добавить по этому иключению новое устройство
-                throw new DeviceException(
-                    $"Такого утройства {Name}, нет в библиотеке команд");
-            }
-
             //Количество попыток досутчатся до прибора
             //TODO если достучались с первого раза то второй ненужно
-            for (int i = 0; i < checkedOnConnectTimes; i++)
-            {
-                if (string.IsNullOrWhiteSpace(checkCmd))
-                {
-                    TransmitReceivedCmd(selectCmd.Value.Transmit);
-                }
-                else
-                {
-                    TransmitReceivedCmd(checkCmd);
-                }
-            }
 
-            Console.WriteLine($"Устройство {Name}, не смогло пройти проверку");
-            //Уведомить
-            return false;
+            if (string.IsNullOrWhiteSpace(checkCmd))
+            {
+                TransmitCmdInLib("Status");
+            }
+            else
+            {
+                TransmitCmd(checkCmd);
+            }
         }
 
         /// <summary>
         /// Отправка в устройство и прием СТАНДАРТНЫХ (есть в библиотеке команд) команд из устройства
         /// </summary>
         /// <param name="nameCommand">Имя команды (например Status)</param>
-        /// <param name="nameDevice">Имя девайса (например GPS-74303)</param>
-        /// <param name="delay">Задержка между запросом и ответом если 0, то используется стандартная из библиотеки команд</param>
-        /// <param name="templateCommand">Будет ли использоватся стандартный ответ от прибора например GWInst</param>
-        /// <returns>Ответ от устройства</returns>
-        public void TransmitReceivedDefaultCmd(string nameCommand, int delay = 0)
+        public void TransmitCmdInLib(string nameCommand)
         {
             var selectCmd = libCmd.DeviceCommands
-                .FirstOrDefault(x => x.Key.NameCmd == nameCommand && x.Key.NameDevice == Name);
-
-            if (selectCmd.Value == null)
+                .FirstOrDefault(x => x.Key.NameCmd == nameCommand && x.Key.NameDevice == Name).Value;
+            Delay = selectCmd.Delay;
+            PingCountIfError = selectCmd.PingCountIfError;
+            EndOfStringIfError = selectCmd.EndOfStringIfError;
+            if (selectCmd == null)
             {
                 throw new DeviceException(
                     $"Такой команды - {nameCommand} или такого утройства {Name}, нет в библиотеке команд");
             }
 
-            //Если в метод не передается иное значение задержки то используется стандартная из библиотеки команд
-            if (delay == 0)
-            {
-                delay = selectCmd.Value.Delay;
-            }
-
-            TransmitReceivedCmd(selectCmd.Value.Transmit);
+            TransmitCmd(selectCmd.Transmit, Delay, selectCmd.Terminator);
         }
 
         /// <summary>
@@ -141,14 +205,13 @@ namespace Vips
         /// <param name="cmd">Команда</param>
         /// <param name="delay">Задержка между запросом и ответом</param>
         /// <param name="receiveType"></param>
+        /// <param name="terminator">Окончание строки команды по умолчанию \n</param>
         /// <returns>Ответ от устройства</returns>
-        public void TransmitReceivedCmd(string cmd)
+        public void TransmitCmd(string cmd, int delay = 0, string terminator = "\n")
         {
-            var message = System.Text.Encoding.UTF8.GetBytes(cmd + "\n");
+            Delay = delay;
+            var message = System.Text.Encoding.UTF8.GetBytes(cmd + terminator);
             port.SendMessage(message);
-            
-            //Thread.Sleep(delay);
-            // Console.WriteLine($"Задержка \"TransmitReceivedCmd\" {delay} мс");
         }
     }
 }

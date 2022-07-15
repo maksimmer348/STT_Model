@@ -23,7 +23,7 @@ namespace Vips
             for (int i = 0; i < checkedOnConnectTimes; i++)
             {
                 
-                TransmitReceivedCmd(selectCmd.Value.Transmit);
+                TransmitCmd(selectCmd.Value.Transmit);
                 //TODO разобратся шаблон ответа должен в сбее содержать ответ прибора или наоборот
                 // if (selectCmd.Value.Receive.Contains(receive))
                 // {

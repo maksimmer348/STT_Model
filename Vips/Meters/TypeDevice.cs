@@ -3,8 +3,10 @@
     public enum TypeDevice
     {
         VoltMeter,
+        VoltMeterDto,
         Thermometer,
         Load,
-        Relay
+        Relay,
+        Supply
     }
 }

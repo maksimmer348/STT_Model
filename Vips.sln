@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vips", "Vips\Vips.csproj", "{0E737025-CB0B-49EB-8B04-722C3629D02B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerialPortLib", "..\libs\serialport-lib-dotnet-master\SerialPortLib\SerialPortLib.csproj", "{1219C397-534F-4E8C-BD09-D20B83787E69}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{0E737025-CB0B-49EB-8B04-722C3629D02B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0E737025-CB0B-49EB-8B04-722C3629D02B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0E737025-CB0B-49EB-8B04-722C3629D02B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1219C397-534F-4E8C-BD09-D20B83787E69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1219C397-534F-4E8C-BD09-D20B83787E69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1219C397-534F-4E8C-BD09-D20B83787E69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1219C397-534F-4E8C-BD09-D20B83787E69}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

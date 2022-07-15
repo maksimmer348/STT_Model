@@ -23,7 +23,9 @@ namespace Vips
                 new MeterCmd()
                 {
                     //запрос
-                    Transmit = "IDN?",
+                    Transmit = "*IDN?",
+                    //окончание строки
+                    Terminator = "\n",
                     //ожидаемый ответ
                     Receive = "78255",
                     //тип ожидаемого ответа - текстовый
@@ -45,6 +47,34 @@ namespace Vips
                     Transmit = "Curr?",
 
                     ReceiveType = TypeAnswer.Number,
+                    Delay = 50
+                });
+
+            DeviceCommands.Add(
+                new MeterIdentCmd()
+                {
+                    //имя устройктсва
+                    NameDevice = "PSP-405",
+                    //имя команды
+                    NameCmd = "Status"
+                },
+                new MeterCmd()
+                {
+                    //запрос
+                    Transmit = "W",
+                    //окончание строки
+                    Terminator = "\r\n",
+                    //ожидаемый ответ
+                    Receive = "00.0",
+                    //тип ожидаемого ответа - текстовый
+                    ReceiveType = TypeAnswer.Text,
+                    //количство запросов если ошибка
+                    PingCountIfError = 3,
+                    //ожидаемое начало строки если ошибка
+                    StartOfStringIfError = "W",
+                    //ожидаемое оканчание строки если ошибка
+                    EndOfStringIfError = "\r",
+                    //задержка между запросом и ответом 
                     Delay = 50
                 });
 
@@ -120,7 +150,7 @@ namespace Vips
                     Receive = "",
                     Delay = 5000
                 });
-            
+
             DeviceCommands.Add(
                 new MeterIdentCmd()
                 {
