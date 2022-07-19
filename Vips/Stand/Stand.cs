@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using RJCP.IO.Ports;
 using SerialPortLib;
@@ -26,10 +27,10 @@ namespace Vips
 
         public void OnErrorConnectDevices(ObservableCollection<BaseMeter> obj)
         {
-            foreach (var meter in obj)
-            {
-                Console.WriteLine($"Устройство {meter.Name} на порту {meter.GetPortNum} не функционирует");
-            }
+            // foreach (var meter in obj)
+            // {
+            //     Console.WriteLine($"Устройство {meter.Name} на порту {meter.GetPortNum} не функционирует");
+            // }
         }
 
         /// <summary>
@@ -44,8 +45,8 @@ namespace Vips
         /// <param name="dataBits">Колво байт в команде</param>
         /// <param name="dtr">Включить 12 вольт в компорте</param>
         /// <exception cref="DeviceException">Такой компорт уже занят</exception>
-        public void AddDevice(TypeDevice typeDevice, string nameDevice, string pornName, int baud, StopBits stopBits,
-            Parity parity, DataBits dataBits, bool dtr = false)
+        public void AddDevice(TypePort portLib, TypeDevice typeDevice, string nameDevice, string pornName, int baud, int stopBits,
+            int parity, int dataBits, bool dtr = false)
         {
             if (!mainValidator.ValidateCollisionPort(pornName))
             {
@@ -59,9 +60,9 @@ namespace Vips
                     Type = TypeDevice.VoltMeter,
                     Name = nameDevice,
                 };
-                device.Config(pornName, baud, stopBits, parity, dataBits, dtr);
+                device.ConfigDevice(portLib, pornName, baud, stopBits, parity, dataBits, dtr);
                 device.ConnectPort += OnConnectPort;
-                device.ConnectDevice += OnCheckCmdDevice;
+                    //device.ConnectDevice += OnCheckCmdDevice;
                 device.Receive += OnReceive;
 
                 Devices.Add(device);
@@ -75,9 +76,9 @@ namespace Vips
                 {
                     Name = nameDevice,
                 };
-                device.Config(pornName, baud, stopBits, parity, dataBits, dtr);
+                device.ConfigDevice(portLib,pornName, baud, stopBits, parity, dataBits, dtr);
                 device.ConnectPort += OnConnectPort;
-                device.ConnectDevice += OnCheckCmdDevice;
+                //device.ConnectDevice += OnCheckCmdDevice;
                 device.Receive += OnReceive;
 
                 Devices.Add(device);
@@ -91,9 +92,9 @@ namespace Vips
                 {
                     Name = nameDevice,
                 };
-                device.Config(pornName, baud, stopBits, parity, dataBits, dtr);
+                device.ConfigDevice(portLib,pornName, baud, stopBits, parity, dataBits, dtr);
                 device.ConnectPort += OnConnectPort;
-                device.ConnectDevice += OnCheckCmdDevice;
+                //device.ConnectDevice += OnCheckCmdDevice;
                 device.Receive += OnReceive;
 
                 Devices.Add(device);
@@ -109,9 +110,9 @@ namespace Vips
                     Type = TypeDevice.VoltMeter,
                     Name = nameDevice,
                 };
-                device.Config(pornName, baud, stopBits, parity, dataBits, dtr);
+                device.ConfigDevice(portLib,pornName, baud, stopBits, parity, dataBits, dtr);
                 device.ConnectPort += OnConnectPort;
-                device.ConnectDevice += OnCheckCmdDevice;
+                //device.ConnectDevice += OnCheckCmdDevice;
                 device.Receive += OnReceive;
 
                 Devices.Add(device);
@@ -131,8 +132,8 @@ namespace Vips
         /// <param name="dataBits">Колво байт в команде</param>
         /// <param name="count">Общее колво релейных плат</param>
         /// <exception cref="DeviceException">Такой компорт уже занят</exception>
-        public void AddRelays(string pornName, int baud, StopBits stopBits,
-            Parity parity, DataBits dataBits, int count = 12)
+        public void AddRelays(string pornName, int baud, int stopBits,
+            int parity, int dataBits, int count = 12)
         {
             if (!mainValidator.ValidateCollisionPort(pornName))
             {
@@ -149,7 +150,7 @@ namespace Vips
 
                 device.Config(pornName, baud, stopBits, parity, dataBits);
                 device.ConnectPort += OnConnectPortDelay;
-                device.ConnectDevice += OnCheckDelay;
+                //device.ConnectDevice += OnCheckDelay;
                 device.Receive += OnReceiveDelay;
                 Relays.Add(device);
 
@@ -161,6 +162,25 @@ namespace Vips
             {
                 mainValidator.BusyPorts.Add(pornName);
             }
+        }
+        Stopwatch stopwatch = new();
+        public void Cnn()
+        {
+            foreach (var device in Devices)
+            {
+                device.PortConnect();
+            }
+        }
+
+        public void NCheck()
+        {
+            stopwatch.Start();
+            foreach (var device in Devices)
+            {
+                device.CheckedConnectDevice();
+            }
+            Console.WriteLine("ОБЩЕЕ ВРЕМЯ {0} милисекунд", stopwatch.Elapsed.TotalMilliseconds);
+            stopwatch.Restart(); // Остановить отсчет времени
         }
 
         /// <summary>
@@ -179,7 +199,7 @@ namespace Vips
             await Task.Delay(TimeSpan.FromMilliseconds(delay));
             return CheckDevice();
         }
-
+        
         /// <summary>
         /// Проверка устройств не занят ли порт и пингуются ли они
         /// </summary>
@@ -195,28 +215,35 @@ namespace Vips
             
             foreach (var device in Devices)
             {
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < 1; i++)
                 {
+                  
+                    //
+                  
+                    Console.WriteLine(i);
                     //отправляем команду проверки на устройство
                     device.CheckedConnectDevice();
-                    
+                    //device.CheckedConnectDevice();
                     //добавлено для выбора самой большой задержки из приборов в общую задержку
-                    delaysList.Add(device.Delay);
+                    //TODO сделать задержку или в утсройстве или впорте но тогда сделать порт пубиолиным
+                    //delaysList.Add(device.Delay);
                     
                     //если общая задержка не указана
                     if (delay == 0)
                     {
                         //используем самую большую задержку из всех проверяемых приборов
-                        delay = delaysList.Max();
+                       // delay = delaysList.Max();
                     }
                     //ждем (если по прношесвтии этого времени в tempErrorDevices чтот появится значит проверка не прошла)
-                    await Task.Delay(TimeSpan.FromMilliseconds(delay));
+                    await Task.Delay(TimeSpan.FromMilliseconds(70));
+                 
                     tempErrorDevices = CheckDevice();
                     //TODO как сделать несолькок проверок если не проходит в первый раз с ожиданием (2 сек гденть)
                     // if (!tempErrorDevices.Any())
                     // {
                     //     break;
                     // }
+                    
                 }
             }
             return tempErrorDevices;
@@ -246,7 +273,7 @@ namespace Vips
             else
             {
                 //TODO возможно использовать событие 
-                throw new DeviceException($"Порт {baseMeter.GetPortNum} не отвечает");
+                throw new Exception();
             }
         }
 
@@ -258,8 +285,8 @@ namespace Vips
             }
             else
             {
-                throw new DeviceException(
-                    $"Устройство {baseMeter.Type} - {baseMeter.Name},на порту {baseMeter.GetPortNum} неверня команда");
+                throw new Exception();
+                //$"Устройство {baseMeter.Type} - {baseMeter.Name},на порту {baseMeter.GetPortNum} неверня команда");
             }
         }
 

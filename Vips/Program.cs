@@ -29,19 +29,20 @@ ConfigVips configVips = new ConfigVips();
 // configVips.AddVip(wrN, Int32.Parse(wrT));
 
 //добвление эфемерных випов
-configVips.AddVip("1", 0);
-configVips.AddVip("2", 0);
-configVips.AddVip("3", 0);
-configVips.AddVip("4", 0);
-configVips.AddVip("5", 0);
-configVips.AddVip("6", 0);
+// configVips.AddVip("1", 0);
+// configVips.AddVip("2", 0);
+// configVips.AddVip("3", 0);
+// configVips.AddVip("4", 0);
+// configVips.AddVip("5", 0);
+// configVips.AddVip("6", 0);
 
 //configVips.ChangedTypeVips(0, new TypeVip() {MaxVoltageOut1 = 100, MaxVoltageOut2 = 200});
 //int portNum = 1;
 //добавление приборв измерения в стенд
 //1 источник проверяет входной ток и входное напряжение
-//stand.AddDevice(TypeDevice.VoltMeter, "GDM-78255A", "COM32", 115200, StopBits.One, Parity.None, DataBits.Eight);
-stand.AddDevice(TypeDevice.Supply, "PSP-405", "COM33", 2400, StopBits.One, Parity.None, DataBits.Eight, true);
+stand.AddDevice(TypePort.SerialInput,TypeDevice.VoltMeter, "GDM-78255A", "COM32", 115200, 1, 0, 8);
+stand.AddDevice(TypePort.GodSerial,TypeDevice.VoltMeter, "PSP-405", "COM33", 2400,1,0,8, true);
+stand.AddDevice(TypePort.SerialInput,TypeDevice.VoltMeter, "PSW7-800-2.88", "COM34", 115200, 1, 0, 8);
 //2 источник проверяет выходное напряжение 1 канал
 //stand.AddDevice(TypeDevice.VoltMeter, "GPS-74303", portNum++, 0, 8,0);
 
@@ -53,10 +54,7 @@ stand.AddDevice(TypeDevice.Supply, "PSP-405", "COM33", 2400, StopBits.One, Parit
 //1 нагрузка нагружает выбранный ВИП
 //stand.AddDevice(TypeDevice.Load, "GDM-4303",portNum++ , 0, 8,0);
 string portNumRelays = "COM31";
-StopBits stopBitsRelays = StopBits.One;
-Parity parityRelays = Parity.None;
-DataBits dataBitsRelays = DataBits.Eight;
-stand.AddRelays(portNumRelays , 9600, stopBitsRelays,parityRelays, dataBitsRelays, 12);
+//stand.AddRelays(portNumRelays , 9600, 1,0, 8, 12);
 //stand.AddDevice(TypeDevice.Relay, "2", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
 // stand.AddDevice(TypeDevice.Relay, "3", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
 // stand.AddDevice(TypeDevice.Relay, "4", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
@@ -68,22 +66,33 @@ stand.AddRelays(portNumRelays , 9600, stopBitsRelays,parityRelays, dataBitsRelay
 // stand.AddDevice(TypeDevice.Relay, "10", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
 // stand.AddDevice(TypeDevice.Relay, "11", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
 // stand.AddDevice(TypeDevice.Relay, "12", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-stand.AddVips(configVips.Vips);
-
-var devicesList = await stand.CheckConnectPort();
-if (!devicesList.Any())
+//stand.AddVips(configVips.Vips);
+stand.Cnn();
+while (true)
 {
-    devicesList = await stand.CheckConnectDevices();
-    if (!devicesList.Any())
-    {
-        foreach (var VARIABLE in stand.Devices)
-        {
-            Console.WriteLine($"прошло - {VARIABLE.Name}");
-        }
-       
-        stand.StandPrepareTest();
-    }
+    stand.NCheck();
 }
+
+
+return;
+
+var devicesList =  await stand.CheckConnectPort();
+devicesList = await stand.CheckConnectDevices();
+return;
+
+// if (!devicesList.Any())
+// {
+//     devicesList = await stand.CheckConnectDevices();
+//     if (!devicesList.Any())
+//     {
+//         foreach (var VARIABLE in stand.Devices)
+//         {
+//             Console.WriteLine($"прошло - {VARIABLE.Name}");
+//         }
+//        
+//         stand.StandPrepareTest();
+//     }
+// }
 
 //var devicesL = await stand.CheckConnectPort(1);
 

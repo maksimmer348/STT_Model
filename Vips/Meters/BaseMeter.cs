@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using RJCP.IO.Ports;
 using SerialPortLib;
@@ -21,52 +22,31 @@ namespace Vips
         public TypeDevice Type;
 
         /// <summary>
-        /// Задается значение в секундах для проверки значений при запуске стенда
-        /// </summary>
-        public int Delay { get; private set; }
-
-        /// <summary>
         /// Компорт прибора
         /// </summary>
-        protected SerialPortInput port;
-
-        /// <summary>
-        /// Количество пингов если прибор выдал ошибку
-        /// </summary>
-        public int PingCountIfError { get; private set; }
-
-        /// <summary>
-        /// Ожидлаемое начало строки если прибор выдал ошибку
-        /// </summary>
-        public string? StartOfStringIfError { get; set; }
-
-        /// <summary>
-        /// Ожидлаемое окончание строки если прибор выдал ошибку
-        /// </summary>
-        public string EndOfStringIfError { get; private set; }
-
-        /// <summary>
-        /// Получение номера порта
-        /// </summary>
-        public string GetPortNum { get; private set; }
-
-        /// <summary>
-        /// DTR прибора
-        /// </summary>
-        private bool dtr;
+        protected ISerialLib port;
 
         /// <summary>
         /// Класс библиотеки
         /// </summary>
         protected BaseLibCmd libCmd = new();
 
+        /// <summary>
+        /// Событие приема данных с устройства
+        /// </summary>
         public Action<BaseMeter, byte[]> Receive;
+
+        /// <summary>
+        /// Событие проверки коннекта к порту
+        /// </summary>
         public Action<BaseMeter, bool> ConnectPort;
-        public Action<BaseMeter, bool> ConnectDevice;
+
+        Stopwatch stopwatch = new();
 
         /// <summary>
         /// Конфигурация компортра утройства
         /// </summary>
+        /// <param name="typePort">Тип исопльзуемой библиотеки com port</param>
         /// <param name="pornName">Номер компорта</param>
         /// <param name="baud">Бауд рейт компорта</param>
         /// <param name="stopBits">Стоповые биты компорта</param>
@@ -74,15 +54,22 @@ namespace Vips
         /// <param name="dataBits">Data bits count</param>
         /// <param name="dtr"></param>
         /// <returns></returns>
-        public void Config(string pornName, int baud, StopBits stopBits, Parity parity, DataBits dataBits,
+        public void ConfigDevice(TypePort typePort, string pornName, int baud, int stopBits, int parity, int dataBits,
             bool dtr = false)
         {
-            port = new SerialPortInput(new NullLogger<SerialPortInput>());
+            if (typePort == TypePort.GodSerial)
+            {
+                port = new SerialGod();
+            }
+            else if (typePort == TypePort.SerialInput)
+            {
+                port = new SerialInput();
+            }
+
             port.SetPort(pornName, baud, stopBits, parity, dataBits);
-            this.dtr = dtr;
-            GetPortNum = pornName;
-            port.ConnectionStatusChanged += OnPortConnectionStatusChanged;
-            port.MessageReceived += OnPortMessageReceived;
+            port.Dtr = dtr;
+            port.ConnectionStatusChanged += ConnectionStatusChanged;
+            port.MessageReceived += MessageReceived;
         }
 
         public void PortConnect()
@@ -95,68 +82,6 @@ namespace Vips
             port.Disconnect();
         }
 
-        //проверка порта
-        void OnPortConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs args)
-        {
-            bool conn = args.Connected;
-            ConnectPort.Invoke(this, conn);
-            port.DtrEnable = dtr;
-            //TODO для наглядности, потом убрать
-            Console.WriteLine($"ответ от порта {GetPortNum} - {conn}, устройство {Name}");
-            //
-        }
-
-        string str;
-        //ответ от прибора
-
-        private byte[] trashBytes = new byte[] {254, 252, 248, 255, 240};
-
-        string ClearReceive(byte[] receive)
-        {
-            List<byte> InList = receive.ToList();
-            foreach (var trashByte in trashBytes)
-            {
-                InList.Remove(trashByte);
-            }
-
-            return System.Text.Encoding.UTF8.GetString(InList.ToArray());
-        }
-        
-        string GetBuffersString(string str)
-        {
-            // EndOfStringIfError ="";
-            //StartOfStringIfError= "";
-             if (string.IsNullOrEmpty(StartOfStringIfError) && string.IsNullOrEmpty(EndOfStringIfError) && PingCountIfError <= 0) return str;
-             else if()
-             {
-                 
-             }
-             else if()
-             {
-                 
-             }
-        }
-
-
-        void OnPortMessageReceived(object sender, MessageReceivedEventArgs args)
-        {
-            //var data = System.Text.Encoding.UTF8.GetString(args.Data);
-            var data = ClearReceive(args.Data);
-            
-          
-            var answer = (data);
-            //TODO для наглядности, потом убрать
-            Console.WriteLine($"ответ от устройства {Name} - {answer}, порт {GetPortNum} ");
-            //
-
-            var selectCmd = libCmd.DeviceCommands
-                .FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == Name);
-            if (answer.Contains(selectCmd.Value.Receive))
-            {
-                ConnectDevice.Invoke(this, true);
-            }
-        }
-
         /// <summary>
         /// Проверка устройства на коннект
         /// </summary>
@@ -164,18 +89,23 @@ namespace Vips
         /// <param name="delay">Задержка на проверку (если 0 будет исользована из библиотеки )</param>
         /// <returns>Успешна ли попытка коннекта</returns>
         /// <exception cref="DeviceException">Такого устройства, нет в библиотеке команд</exception>
-        public void CheckedConnectDevice(string checkCmd = "", int delay = 0)
+        public void CheckedConnectDevice(string checkCmd = "", int delay = 0, string terminator = "")
         {
-            //Количество попыток досутчатся до прибора
-            //TODO если достучались с первого раза то второй ненужно
+            //для отладки
+            // Время начала 
+            stopwatch.Start();
+            //
 
+            //если строка команды пустая
             if (string.IsNullOrWhiteSpace(checkCmd))
             {
+                //используем команду статус которя возмет текущий прибор и введет в него команду статус
                 TransmitCmdInLib("Status");
             }
             else
             {
-                TransmitCmd(checkCmd);
+                //используем ручной ввод
+                port.TransmitCmd(cmd: checkCmd, delay: delay, terminator: terminator);
             }
         }
 
@@ -185,33 +115,97 @@ namespace Vips
         /// <param name="nameCommand">Имя команды (например Status)</param>
         public void TransmitCmdInLib(string nameCommand)
         {
-            var selectCmd = libCmd.DeviceCommands
-                .FirstOrDefault(x => x.Key.NameCmd == nameCommand && x.Key.NameDevice == Name).Value;
-            Delay = selectCmd.Delay;
-            PingCountIfError = selectCmd.PingCountIfError;
-            EndOfStringIfError = selectCmd.EndOfStringIfError;
+            // MeterCmd selectCmd = libCmd.DeviceCommands
+            //     .FirstOrDefault(x => x.Key.NameCmd == nameCommand && x.Key.NameDevice == Name).Value;
+            var selectCmd = GetLibItem(nameCommand, Name);
+
             if (selectCmd == null)
             {
                 throw new DeviceException(
-                    $"Такой команды - {nameCommand} или такого утройства {Name}, нет в библиотеке команд");
+                    $"Такое устройство - {Name} или команда - {nameCommand} в библиотеке не найдены");
             }
 
-            TransmitCmd(selectCmd.Transmit, Delay, selectCmd.Terminator);
+            if (selectCmd.MessageType == TypeCmd.Hex)
+            {
+                port.TransmitCmd(GetStringHexInText(selectCmd.Transmit), selectCmd.Delay,
+                    GetStringHexInText(selectCmd.StartOfString), GetStringHexInText(selectCmd.EndOfString),
+                    GetStringHexInText(selectCmd.Terminator));
+            }
+            else
+            {
+                port.TransmitCmd(selectCmd.Transmit, selectCmd.Delay, selectCmd.StartOfString, selectCmd.EndOfString,
+                    selectCmd.Terminator);
+            }
         }
 
         /// <summary>
-        /// Отправка в устройство и прием команд из устройства
+        /// Обработка прнятого сообщения из устройства
         /// </summary>
-        /// <param name="cmd">Команда</param>
-        /// <param name="delay">Задержка между запросом и ответом</param>
-        /// <param name="receiveType"></param>
-        /// <param name="terminator">Окончание строки команды по умолчанию \n</param>
-        /// <returns>Ответ от устройства</returns>
-        public void TransmitCmd(string cmd, int delay = 0, string terminator = "\n")
+        private void MessageReceived(string receive)
         {
-            Delay = delay;
-            var message = System.Text.Encoding.UTF8.GetBytes(cmd + terminator);
-            port.SendMessage(message);
+            //для отладки
+            Console.WriteLine("Время работы программы: {0} милисекунд", stopwatch.Elapsed.TotalMilliseconds);
+            stopwatch.Restart(); // Остановить отсчет времени
+
+            //для отладки
+            Console.WriteLine($"ответ от устройства {Name} - {receive}, порт {port.GetPortNum} ");
+            //
+            //для проверки на статус 
+            var selectCmd = GetLibItem("Status", Name);
+            //если ответ от устройства соотвествует ответу на кодмаду Status то вернем true
+            if (receive.Contains(selectCmd.Receive))
+            {
+                ConnectPort.Invoke(this, true);
+            }
+        }
+
+        /// <summary>
+        /// Прошел ли коннект выбраного com port
+        /// </summary>
+        private void ConnectionStatusChanged(bool obj)
+        {
+            //для отладки
+            Console.WriteLine($"ответ от порта {port.GetPortNum} - {obj}, устройство {Name}");
+            //
+        }
+
+        protected MeterCmd GetLibItem(string cmd, string deviceName)
+        {
+            return libCmd.DeviceCommands
+                .FirstOrDefault(x => x.Key.NameCmd == cmd && x.Key.NameDevice == deviceName).Value;
+        }
+
+        string GetStringTextInHex(string s)
+        {
+            if (!string.IsNullOrEmpty(s))
+            {
+                byte[] bytes = new byte[s.Length / 2];
+                for (int i = 0; i < s.Length; i += 2)
+                {
+                    var ff = bytes[i / 2];
+                    bytes[i / 2] = Convert.ToByte(s.Substring(i, 2), 16);
+                }
+
+                return Encoding.ASCII.GetString(bytes);
+            }
+
+            return "";
+        }
+
+        string GetStringHexInText(string s)
+        {
+            if (!string.IsNullOrEmpty(s))
+            {
+                string hex = "";
+                foreach (var ss in s)
+                {
+                    hex += Convert.ToByte(ss).ToString("x2");
+                }
+
+                return hex;
+            }
+
+            return "";
         }
     }
 }

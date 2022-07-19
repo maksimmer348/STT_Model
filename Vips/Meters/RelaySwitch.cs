@@ -8,9 +8,9 @@ namespace Vips
     {
         public Vip TestVip { get; set; } = new Vip();
 
-        public void Config(string pornName, int baud, Parity parity, DataBits dataBits, StopBits stopBits)
+        public void Config(string pornName, int baud, int parity, int dataBits, int stopBits)
         {
-            port = new SerialPortInput(new NullLogger<SerialPortInput>());
+           // port = new SerialInput(new NullLogger<SerialPortInput>());
             port.SetPort(pornName, baud, stopBits, parity, dataBits);
         }
 
@@ -23,7 +23,7 @@ namespace Vips
             for (int i = 0; i < checkedOnConnectTimes; i++)
             {
                 
-                TransmitCmd(selectCmd.Value.Transmit);
+               // TransmitCmd(selectCmd.Value.Transmit);
                 //TODO разобратся шаблон ответа должен в сбее содержать ответ прибора или наоборот
                 // if (selectCmd.Value.Receive.Contains(receive))
                 // {
