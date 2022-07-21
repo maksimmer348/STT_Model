@@ -24,9 +24,10 @@ public class SerialGod : ISerialLib
             port.DtrEnable = true;
             GetPortNum = pornName;
         }
-        catch (DeviceException e)
+        catch (SerialException e)
         {
-            throw new DeviceException($"Порт \"{GetPortNum}\" не конфигурирован, ошибка - {e.Message}");
+            throw new SerialException(
+                $"SerialGod exception: Порт \"{GetPortNum}\" не конфигурирован, ошибка - {e.Message}");
         }
     }
 
@@ -39,10 +40,20 @@ public class SerialGod : ISerialLib
 
             return isConnect;
         }
-        catch (DeviceException e)
+        catch (SerialException e)
         {
-            throw new DeviceException($"Порт \"{GetPortNum}\" не отвечает, ошибка - {e.Message}");
+            throw new SerialException($"SerialGod exception: Порт \"{GetPortNum}\" не отвечает, ошибка - {e.Message}");
         }
+    }
+
+    public bool IsOpen()
+    {
+        if (port != null)
+        {
+            return port.IsOpen;
+        }
+
+        return false;
     }
 
     public void Disconnect()
@@ -53,7 +64,7 @@ public class SerialGod : ISerialLib
         }
         catch (Exception e)
         {
-            throw new DeviceException($"Порт \"{GetPortNum}\" не отвечает, ошибка - {e.Message}");
+            throw new SerialException($"SerialGod exception: Порт \"{GetPortNum}\" не отвечает, ошибка - {e.Message}");
         }
     }
 
@@ -80,7 +91,7 @@ public class SerialGod : ISerialLib
 
                 if (innerNullCount == 0)
                 {
-                    throw new Exception($"Ответа нет (null), удачных попыток {innerCount}");
+                    throw new SerialException($"SerialGod exception: Ответа нет (null), удачных попыток {innerCount}");
                 }
             }
 
@@ -91,7 +102,6 @@ public class SerialGod : ISerialLib
             }
 
             //если строка содержит входной символ
-            //TODO переделать (57 символ отправленный устройтву в хекс)
             while (s.Contains(startOfString))
             {
                 //то мы прибавляем строку из буффера компорта
@@ -99,7 +109,8 @@ public class SerialGod : ISerialLib
                 s = s.Replace(" ", "");
                 //TODO переделать (0D == \r, 0A == \n)
                 //проверяемем есть ли в строке сиволы окончания
-                if (string.Equals(s.Substring(s.Length - endOfString.Length), endOfString, StringComparison.CurrentCultureIgnoreCase))
+                if (string.Equals(s.Substring(s.Length - endOfString.Length), endOfString,
+                        StringComparison.CurrentCultureIgnoreCase))
                 {
                     //проверка на дублирование ответа если дублирован убираем 2 половину
                     if (s.Substring(0, s.Length / 2) == s.Substring(s.Length / 2, s.Length / 2))
@@ -117,7 +128,9 @@ public class SerialGod : ISerialLib
                 //и выбрасываем исключение
                 if (innerErrorCount <= 0)
                 {
-                    throw new Exception($"Слишком много неудачых попыток (notNull) - {innerCount}");
+                    //TODO раскоменетить
+                    //throw new Exception($"SerialGod exception: Слишком много неудачых попыток (notNull) - {innerCount}");
+                    Console.WriteLine($"SerialGod exception: Слишком много неудачых попыток (notNull) - {innerCount}");
                 }
 
                 Thread.Sleep(10);
@@ -128,20 +141,21 @@ public class SerialGod : ISerialLib
                 port.DiscardInBuffer();
                 port.DiscardOutBuffer();
                 Thread.Sleep(20);
-                TransmitCmd(startOfString);
+                TransmitCmdTextString(startOfString);
             }
         }
 
-        throw new Exception($"Ответа нет, неудачых попыток {countReads}");
+        throw new Exception($"SerialGod exception: Ответа нет, неудачых попыток {countReads}");
     }
 
-    public void TransmitCmd(string cmd, int delay = 0, string start = "", string end = "", string terminator = "")
+    public void TransmitCmdTextString(string cmd, int delay = 0, string start = null, string end = null,
+        string terminator = null)
     {
         if (string.IsNullOrEmpty(cmd))
         {
-            throw new DeviceException($"При ручном вводе, checkCmd- не должны быть пустыми");
+            throw new SerialException($"SerialGod exception: При ручном вводе, checkCmd- не должны быть пустыми");
         }
-        
+
         if (string.IsNullOrEmpty(terminator))
         {
             terminator = "0A0D";
@@ -154,9 +168,51 @@ public class SerialGod : ISerialLib
             Thread.Sleep(30);
             ReadPSP(start, end);
         }
-        catch (DeviceException e)
+        catch (SerialException e)
         {
-            throw new DeviceException(e.Message);
+            throw new SerialException("SerialGod exception: " + e.Message);
         }
+    }
+
+    public void TransmitCmdHexString(string cmd, int delay = 0, string start = null, string end = null,
+        string terminator = null)
+    {
+        TransmitCmdTextString(GetStringHexInText(cmd), delay,
+            GetStringHexInText(start), GetStringHexInText(end),
+            GetStringHexInText(terminator));
+    }
+
+    //TODO убрать расплодившиеся методы
+    string GetStringTextInHex(string s)
+    {
+        if (!string.IsNullOrEmpty(s))
+        {
+            byte[] bytes = new byte[s.Length / 2];
+            for (int i = 0; i < s.Length; i += 2)
+            {
+                var ff = bytes[i / 2];
+                bytes[i / 2] = Convert.ToByte(s.Substring(i, 2), 16);
+            }
+
+            return Encoding.ASCII.GetString(bytes);
+        }
+
+        return "";
+    }
+
+    string GetStringHexInText(string s)
+    {
+        if (!string.IsNullOrEmpty(s))
+        {
+            string hex = "";
+            foreach (var ss in s)
+            {
+                hex += Convert.ToByte(ss).ToString("x2");
+            }
+
+            return hex;
+        }
+
+        return "";
     }
 }

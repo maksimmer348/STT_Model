@@ -4,32 +4,19 @@ using SerialPortLib;
 
 namespace Vips
 {
-    public class RelaySwitch : BaseMeter
+    public class RelaySwitch : BaseDevice
     {
         public Vip TestVip { get; set; } = new Vip();
 
-        public void Config(string pornName, int baud, int parity, int dataBits, int stopBits)
+        public RelaySwitch(string name, TypeDevice type) : base(name, type)
         {
-           // port = new SerialInput(new NullLogger<SerialPortInput>());
-            port.SetPort(pornName, baud, stopBits, parity, dataBits);
         }
 
-        public void CheckedConnect(int checkedOnConnectTimes = 1)
+        public void ConfigDevice(string pornName, int baud, int parity, int dataBits, int stopBits)
         {
-            var selectCmd = libCmd.DeviceCommands
-                .FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == "Relay");
-            
-            //Количество попыток досутчатся до прибора
-            for (int i = 0; i < checkedOnConnectTimes; i++)
-            {
-                
-               // TransmitCmd(selectCmd.Value.Transmit);
-                //TODO разобратся шаблон ответа должен в сбее содержать ответ прибора или наоборот
-                // if (selectCmd.Value.Receive.Contains(receive))
-                // {
-                // }
-            }
-
+            port = new SerialInput();
+            port.SetPort(Config.PortName, Config.Baud, Config.StopBits, Config.Parity, Config.DataBits);
+            port.Dtr = Config.Dtr;
         }
     }
 }

@@ -1,9 +1,11 @@
-﻿namespace Vips
+﻿using SerialPortLib;
+
+namespace Vips
 {
     /// <summary>
     /// Стандартная команда, ответ и задержка
     /// </summary>
-    public class MeterCmd
+    public class DeviceCmd
     {
         /// <summary>
         /// Команда в устройство
@@ -50,7 +52,7 @@
         // {
         //     return HashCode.Combine(Transmit, Terminator, Receive, Delay);
         // }
-        protected bool Equals(MeterCmd other)
+        protected bool Equals(DeviceCmd other)
         {
             return Transmit == other.Transmit && Terminator == other.Terminator && Receive == other.Receive &&
                    MessageType == other.MessageType && Delay == other.Delay &&
@@ -63,7 +65,7 @@
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
             if (obj.GetType() != this.GetType()) return false;
-            return Equals((MeterCmd) obj);
+            return Equals((DeviceCmd) obj);
         }
 
         public override int GetHashCode()

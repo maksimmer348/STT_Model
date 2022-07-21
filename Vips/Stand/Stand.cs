@@ -10,32 +10,16 @@ namespace Vips
 {
     public class Stand
     {
-        private MainValidator mainValidator = new MainValidator();
-        public ObservableCollection<BaseMeter> Devices { get; set; } = new ObservableCollection<BaseMeter>();
-
-        public ObservableCollection<BaseMeter> TempVerifiedDevices { get; set; } =
-            new ObservableCollection<BaseMeter>();
-
-        public ObservableCollection<RelaySwitch> Relays { get; set; } = new ObservableCollection<RelaySwitch>();
-
-        private event Action<ObservableCollection<BaseMeter>> ConnectDevicesStatus;
-
-        public Stand()
-        {
-            ConnectDevicesStatus += OnErrorConnectDevices;
-        }
-
-        public void OnErrorConnectDevices(ObservableCollection<BaseMeter> obj)
-        {
-            // foreach (var meter in obj)
-            // {
-            //     Console.WriteLine($"Устройство {meter.Name} на порту {meter.GetPortNum} не функционирует");
-            // }
-        }
+        //Stopwatch stopwatch = new();
+        private MainValidator mainValidator = new();
+        public ObservableCollection<BaseDevice> Devices { get; set; } = new();
+        public ObservableCollection<BaseDevice> TempVerifiedDevices { get; set; } = new();
+        public ObservableCollection<RelaySwitch> Relays { get; set; } = new();
 
         /// <summary>
         /// Добавление устройств в стенд
         /// </summary>
+        /// <param name="portLib">Используема устройством библиотека com port</param>
         /// <param name="typeDevice">Тип устройства</param>
         /// <param name="nameDevice">Имя устройства</param>
         /// <param name="pornName">Номер порта устройства</param>
@@ -44,82 +28,123 @@ namespace Vips
         /// <param name="parity">Parity bits</param>
         /// <param name="dataBits">Колво байт в команде</param>
         /// <param name="dtr">Включить 12 вольт в компорте</param>
-        /// <exception cref="DeviceException">Такой компорт уже занят</exception>
-        public void AddDevice(TypePort portLib, TypeDevice typeDevice, string nameDevice, string pornName, int baud, int stopBits,
-            int parity, int dataBits, bool dtr = false)
+        /// <exception cref="StandException">Такой компорт уже занят</exception>
+        public void AddDevice(TypePort portLib, TypeDevice typeDevice, string nameDevice, string pornName, int baud,
+            int stopBits, int parity, int dataBits, bool dtr = false)
         {
-            if (!mainValidator.ValidateCollisionPort(pornName))
+            try
             {
-                throw new DeviceException($"Такой порт - {pornName} уже занят");
-            }
-
-            if (typeDevice == TypeDevice.VoltMeter)
-            {
-                var device = new VoltMeter
+                if (!mainValidator.ValidateCollisionPort(pornName))
                 {
-                    Type = TypeDevice.VoltMeter,
-                    Name = nameDevice,
-                };
-                device.ConfigDevice(portLib, pornName, baud, stopBits, parity, dataBits, dtr);
-                device.ConnectPort += OnConnectPort;
-                    //device.ConnectDevice += OnCheckCmdDevice;
-                device.Receive += OnReceive;
+                    throw new StandException($"Stand Exception: Такой порт - {pornName} уже занят");
+                }
 
-                Devices.Add(device);
-                Console.WriteLine($"Устройство {device.Type}, {device.Name} было добавлена в стенд");
-                //уведомитиь
-            }
-
-            if (typeDevice == TypeDevice.Thermometer)
-            {
-                var device = new Thermometer
+                if (typeDevice == TypeDevice.Supply)
                 {
-                    Name = nameDevice,
-                };
-                device.ConfigDevice(portLib,pornName, baud, stopBits, parity, dataBits, dtr);
-                device.ConnectPort += OnConnectPort;
-                //device.ConnectDevice += OnCheckCmdDevice;
-                device.Receive += OnReceive;
+                    var device = new Supply(nameDevice, typeDevice);
+                    ConfigDeviceParams config = new ConfigDeviceParams()
+                    {
+                        TypePort = portLib, PortName = pornName,
+                        Baud = baud, StopBits = stopBits, Parity = parity, DataBits = dataBits, Dtr = dtr
+                    };
+                    device.Config = config;
+                    device.ConfigDevice();
+                    device.ConnectPort += OnCheckConnectPort;
+                    device.ConnectDevice += OnCheckDevice;
+                    device.Receive += Receive;
+                    Devices.Add(device);
+                    Console.WriteLine(
+                        $"Stand message: Устройство {device.Type}, {device.Name} было предварительно добавлено в стенд");
+                    //уведомитиь
+                }
 
-                Devices.Add(device);
-                Console.WriteLine($"Устройство {device.Type}, {device.Name} было добавлена в стенд");
-                //уведомить
-            }
-
-            if (typeDevice == TypeDevice.Load)
-            {
-                var device = new Load
+                if (typeDevice == TypeDevice.VoltMeter)
                 {
-                    Name = nameDevice,
-                };
-                device.ConfigDevice(portLib,pornName, baud, stopBits, parity, dataBits, dtr);
-                device.ConnectPort += OnConnectPort;
-                //device.ConnectDevice += OnCheckCmdDevice;
-                device.Receive += OnReceive;
+                    var device = new VoltMeter(nameDevice, typeDevice);
 
-                Devices.Add(device);
-                Console.WriteLine($"Устройство {device.Type}, {device.Name} было добавлена в стенд");
-                //уведомитть
-            }
+                    ConfigDeviceParams config = new ConfigDeviceParams()
+                    {
+                        TypePort = portLib, PortName = pornName,
+                        Baud = baud, StopBits = stopBits, Parity = parity, DataBits = dataBits, Dtr = dtr
+                    };
+                    device.Config = config;
+                    device.ConfigDevice();
+                    device.ConnectPort += OnCheckConnectPort;
+                    device.ConnectDevice += OnCheckDevice;
+                    device.Receive += Receive;
+                    Devices.Add(device);
+                    Console.WriteLine(
+                        $"Stand message: Устройство {device.Type}, {device.Name} было  было предварительно добавлено в стенд");
+                    //уведомитиь
+                }
 
-            //TODO для тестов
-            if (typeDevice == TypeDevice.Supply)
-            {
-                var device = new Supply
+                if (typeDevice == TypeDevice.Thermometer)
                 {
-                    Type = TypeDevice.VoltMeter,
-                    Name = nameDevice,
-                };
-                device.ConfigDevice(portLib,pornName, baud, stopBits, parity, dataBits, dtr);
-                device.ConnectPort += OnConnectPort;
-                //device.ConnectDevice += OnCheckCmdDevice;
-                device.Receive += OnReceive;
+                    var device = new Thermometer(nameDevice, typeDevice);
+                    ConfigDeviceParams config = new ConfigDeviceParams()
+                    {
+                        TypePort = portLib, PortName = pornName,
+                        Baud = baud, StopBits = stopBits, Parity = parity, DataBits = dataBits, Dtr = dtr
+                    };
+                    device.Config = config;
+                    device.ConfigDevice();
+                    device.ConnectPort += OnCheckConnectPort;
+                    device.ConnectDevice += OnCheckDevice;
+                    device.Receive += Receive;
+                    Devices.Add(device);
+                    Console.WriteLine(
+                        $"Stand message: Устройство {device.Type}, {device.Name} было  было предварительно добавлено в стенд");
+                    //уведомить
+                }
 
-                Devices.Add(device);
-                Console.WriteLine($"Устройство {device.Type}, {device.Name} было добавлена в стенд");
-                //уведомитиь
+                if (typeDevice == TypeDevice.Load)
+                {
+                    var device = new Load(nameDevice, typeDevice);
+                    ConfigDeviceParams config = new ConfigDeviceParams()
+                    {
+                        TypePort = portLib, PortName = pornName,
+                        Baud = baud, StopBits = stopBits, Parity = parity, DataBits = dataBits, Dtr = dtr
+                    };
+                    device.Config = config;
+                    device.ConfigDevice();
+                    device.ConnectPort += OnCheckConnectPort;
+                    device.ConnectDevice += OnCheckDevice;
+                    device.Receive += Receive;
+                    Devices.Add(device);
+                    Console.WriteLine(
+                        $"Stand message: Устройство {device.Type}, {device.Name} было  было предварительно добавлено в стенд");
+                    //уведомитть
+                }
+
+                if (!mainValidator.ValidateCollisionPort(pornName))
+                {
+                    mainValidator.BusyPorts.Add(pornName);
+                }
             }
-            //
+
+            catch (StandException e)
+            {
+                throw new StandException(e.Message);
+            }
+        }
+
+
+        public void ChangeDevice(int indexDevice, ConfigDeviceParams newConfig)
+        {
+            try
+            {
+                var oldConf = Devices[indexDevice].GetConfigDevice();
+                if (newConfig.PortName != default)
+                {
+                    Devices[indexDevice].Config.PortName = newConfig.PortName;
+                    
+                }
+                Devices[indexDevice].ConfigDevice();
+            }
+            catch (StandException e)
+            {
+                throw new StandException($"Stand Exception: Такого устройства нет в списке");
+            }
         }
 
         /// <summary>
@@ -131,30 +156,30 @@ namespace Vips
         /// <param name="parity">Parity bits</param>
         /// <param name="dataBits">Колво байт в команде</param>
         /// <param name="count">Общее колво релейных плат</param>
-        /// <exception cref="DeviceException">Такой компорт уже занят</exception>
+        /// <exception cref="StandException">Такой компорт уже занят</exception>
         public void AddRelays(string pornName, int baud, int stopBits,
             int parity, int dataBits, int count = 12)
         {
             if (!mainValidator.ValidateCollisionPort(pornName))
             {
-                throw new DeviceException($"Такой порт - {pornName} уже занят");
+                throw new StandException($"Stand Exception: Такой порт - {pornName} уже занят");
             }
 
             for (int i = 1; i <= count; i++)
             {
-                var device = new RelaySwitch
+                var device = new RelaySwitch($"{count}", TypeDevice.Relay);
+                ConfigDeviceParams config = new ConfigDeviceParams()
                 {
-                    Type = TypeDevice.Relay,
-                    Name = $"{count}"
+                    PortName = pornName, Baud = baud, StopBits = stopBits, Parity = parity, DataBits = dataBits
                 };
+                device.Config = config;
+                device.ConfigDevice();
 
-                device.Config(pornName, baud, stopBits, parity, dataBits);
-                device.ConnectPort += OnConnectPortDelay;
-                //device.ConnectDevice += OnCheckDelay;
-                device.Receive += OnReceiveDelay;
+                //device.ConnectPort += OnConnectPortDelay;
+                //device.Receive += OnReceiveDelay;
                 Relays.Add(device);
 
-                Console.WriteLine($"Реле {device.Name} было добавлено в стенд");
+                Console.WriteLine($"Stand message: Реле {device.Name} было добавлено в стенд");
                 //уведомить
             }
 
@@ -163,152 +188,117 @@ namespace Vips
                 mainValidator.BusyPorts.Add(pornName);
             }
         }
-        Stopwatch stopwatch = new();
-        public void Cnn()
-        {
-            foreach (var device in Devices)
-            {
-                device.PortConnect();
-            }
-        }
-
-        public void NCheck()
-        {
-            stopwatch.Start();
-            foreach (var device in Devices)
-            {
-                device.CheckedConnectDevice();
-            }
-            Console.WriteLine("ОБЩЕЕ ВРЕМЯ {0} милисекунд", stopwatch.Elapsed.TotalMilliseconds);
-            stopwatch.Restart(); // Остановить отсчет времени
-        }
 
         /// <summary>
         /// Проверка на физическое существование порта  
         /// </summary>
-        /// <param name="delay">Общая задержка проверки (по умолчанию 50)</param>
+        /// <param name="delay">Общая задержка проверки (по умолчанию 10)</param>
         /// <returns></returns>
-        public async Task<List<BaseMeter>> CheckConnectPort(int delay = 50)
+        public async Task<List<BaseDevice>> CheckConnectPorts(int delay = 10)
         {
-            //TODO когда нажали кнопку делать ее disabled
             foreach (var device in Devices)
             {
+                
                 device.PortConnect();
             }
 
             await Task.Delay(TimeSpan.FromMilliseconds(delay));
-            return CheckDevice();
+            //если после задержки в этом списке будут устройства не прошедшие проверку
+            return ErrorDevice();
         }
-        
+
+        //TODO это ведь выполняется прарельно?
         /// <summary>
-        /// Проверка устройств не занят ли порт и пингуются ли они
+        /// Проверка устройств пингуются ли они
         /// </summary>
-        /// <param name="checkedOnConnectTimes">Количество проверок (по умолчанию 1)</param>
-        /// <param name="delay">Общая задержка проверки (если 0 то используется самая большая из представленых прибороов)</param>
         /// <returns></returns>
-        public async Task<List<BaseMeter>> CheckConnectDevices(int checkedOnConnectTimes = 2, int delay = 0)
+        public async Task<List<BaseDevice>> CheckConnectDevices()
         {
             //список для задержек из приборов
             var delaysList = new List<int>();
             //временный список дефетктивынх приборов
-            var tempErrorDevices = new List<BaseMeter>();
-            
+            var tempErrorDevices = new List<BaseDevice>();
+
             foreach (var device in Devices)
             {
-                for (int i = 0; i < 1; i++)
-                {
-                  
-                    //
-                  
-                    Console.WriteLine(i);
-                    //отправляем команду проверки на устройство
-                    device.CheckedConnectDevice();
-                    //device.CheckedConnectDevice();
-                    //добавлено для выбора самой большой задержки из приборов в общую задержку
-                    //TODO сделать задержку или в утсройстве или впорте но тогда сделать порт пубиолиным
-                    //delaysList.Add(device.Delay);
-                    
-                    //если общая задержка не указана
-                    if (delay == 0)
-                    {
-                        //используем самую большую задержку из всех проверяемых приборов
-                       // delay = delaysList.Max();
-                    }
-                    //ждем (если по прношесвтии этого времени в tempErrorDevices чтот появится значит проверка не прошла)
-                    await Task.Delay(TimeSpan.FromMilliseconds(70));
-                 
-                    tempErrorDevices = CheckDevice();
-                    //TODO как сделать несолькок проверок если не проходит в первый раз с ожиданием (2 сек гденть)
-                    // if (!tempErrorDevices.Any())
-                    // {
-                    //     break;
-                    // }
-                    
-                }
+                //отправляем команду проверки на устройство
+                device.CheckedConnectDevice();
+                delaysList.Add(device.CmdDelay);
             }
+
+            //используем самую большую задержку из всех проверяемых приборов
+            var delay = Convert.ToDouble(delaysList?.Max());
+            //ждем (если по прношесвтии этого времени в tempErrorDevices чтот появится значит проверка не прошла)
+            
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
+
+            tempErrorDevices = ErrorDevice();
             return tempErrorDevices;
         }
-        
+
         /// <summary>
         /// Проверка устройтва командой
         /// </summary>
         /// <returns></returns>
-        private List<BaseMeter> CheckDevice()
+        private List<BaseDevice> ErrorDevice()
         {
+            if (TempVerifiedDevices == null)
+            {
+                return Devices.ToList();
+            }
+
             //сравниваем 
             var tempErrorDevices = Devices.Except(TempVerifiedDevices).ToList();
             TempVerifiedDevices.Clear();
+            //возвращаем список приборов не прошедших проверку
             return tempErrorDevices;
         }
+
         /// <summary>
         /// Проверка компорта свободный/несвободный
         /// </summary>
-        /// <returns></returns>
-        public void OnConnectPort(BaseMeter baseMeter, bool connect)
+        public void OnCheckConnectPort(BaseDevice baseDevice, bool connect)
         {
             if (connect)
             {
-                TempVerifiedDevices.Add(baseMeter);
+                TempVerifiedDevices.Add(baseDevice);
             }
             else
             {
                 //TODO возможно использовать событие 
-                throw new Exception();
+                throw new StandException(
+                    $"Stand Exception: ComPort {baseDevice.GetConfigDevice().PortName} - не отвечает");
             }
         }
 
-        public void OnCheckCmdDevice(BaseMeter baseMeter, bool check)
+        /// <summary>
+        /// Проверка устройства отвечает/неотвечает 
+        /// </summary>
+        public void OnCheckDevice(BaseDevice baseDevice, bool check)
         {
             if (check)
             {
-                TempVerifiedDevices.Add(baseMeter);
+                TempVerifiedDevices.Add(baseDevice);
             }
             else
             {
-                throw new Exception();
-                //$"Устройство {baseMeter.Type} - {baseMeter.Name},на порту {baseMeter.GetPortNum} неверня команда");
+                throw new StandException(
+                    $"Stand message: Устройство {baseDevice.Type} - {baseDevice.Name},на порту" +
+                    $" {baseDevice.GetConfigDevice().PortName} неверня команда");
             }
         }
 
-        public void OnReceive(BaseMeter arg1, byte[] receive)
+        /// <summary>
+        /// Прием от устройства ответа на запрос
+        /// </summary>
+        private void Receive(BaseDevice device, string receive)
         {
-        }
+            //Console.WriteLine($"Stand message: Время работы программы {device.Name} : {//stopwatch.Elapsed.TotalMilliseconds} милисекунд");
+            //stopwatch.Restart(); // Остановить отсчет времени
 
-        private void OnConnectPortDelay(BaseMeter arg1, bool arg2)
-        {
-            throw new NotImplementedException();
+            Console.WriteLine($"Stand message: Устройство {device.Name} отправил сообщение {receive}");
         }
-
-        private void OnCheckDelay(BaseMeter arg1, bool arg2)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void OnReceiveDelay(BaseMeter arg1, byte[] arg2)
-        {
-            throw new NotImplementedException();
-        }
-
+        //TODO разобратся как это делать
         public void AddVips(ObservableCollection<Vip> configVipsVips)
         {
             for (int i = 0; i < configVipsVips.Count; i++)
@@ -317,14 +307,14 @@ namespace Vips
                 {
                     Relays[i].TestVip = configVipsVips[i];
                     Console.WriteLine(
-                        $"Вип {configVipsVips[i].Name}, был добавлен к релейной плате {Relays[i].TestVip.Name}, его статус" +
+                        $"Stand message: Вип {configVipsVips[i].Name}, был добавлен к релейной плате {Relays[i].TestVip.Name}, его статус" +
                         $" {configVipsVips[i].Status}");
                     //уведомить
                 }
                 catch (Exception e)
                 {
-                    throw new DeviceException(
-                        $"Произошла ошибка {e} добавления Випа к релейному модулю");
+                    throw new StandException(
+                        $"Stand Exception: Произошла ошибка {e} добавления Випа к релейному модулю");
                 }
             }
         }
@@ -334,9 +324,10 @@ namespace Vips
         /// <summary>
         /// Предварительная задержка
         /// </summary>
-        /// <exception cref="DeviceException">Куча всего может пойти не так оааоао</exception>
+        /// <exception cref="StandException">Куча всего может пойти не так оааоао</exception>
         public void StandPrepareTest()
         {
+            
             // foreach (var relay in Relays)
             // {
             //     if (relay.TestVip == null)
@@ -393,7 +384,7 @@ namespace Vips
             //         if (testVip.CurrentIn > typeVip.PrepareMaxCurrentIn)
             //         {
             //             testVip.Status = StatusVip.Error;
-            //             throw new DeviceException($"Вип{testVip.Name} не прошел предварительное испытание " +
+            //             throw new StandException($"Вип{testVip.Name} не прошел предварительное испытание " +
             //                                       $"выходное напряжение на {testVip.CurrentIn - typeVip.PrepareMaxCurrentIn}" +
             //                                       " больше чем нужно");
             //         }
@@ -407,7 +398,7 @@ namespace Vips
             //         if (testVip.VoltageOut1 > typeVip.PrepareMaxVoltageOut1)
             //         {
             //             testVip.Status = StatusVip.Error;
-            //             throw new DeviceException($"Вип{testVip.Name} не прошел предварительное испытание " +
+            //             throw new StandException($"Вип{testVip.Name} не прошел предварительное испытание " +
             //                                       $"выходное напряжение на {testVip.VoltageOut1 - typeVip.PrepareMaxVoltageOut1}" +
             //                                       " больше чем нужно");
             //         }
@@ -421,7 +412,7 @@ namespace Vips
             //         if (testVip.VoltageOut2 > typeVip.PrepareMaxVoltageOut2)
             //         {
             //             testVip.Status = StatusVip.Error;
-            //             throw new DeviceException($"Вип{testVip.Name} не прошел предварительное испытание " +
+            //             throw new StandException($"Вип{testVip.Name} не прошел предварительное испытание " +
             //                                       $"выходное напряжение на {testVip.VoltageOut2 - typeVip.PrepareMaxVoltageOut2}" +
             //                                       " больше чем нужно");
             //         }
@@ -432,9 +423,9 @@ namespace Vips
             // }
             //
             //
-            // catch (DeviceException e)
+            // catch (StandException e)
             // {
-            //     throw new DeviceException(e.Message);
+            //     throw new StandException(e.Message);
             // }
         }
 
@@ -506,7 +497,7 @@ namespace Vips
             if (!double.TryParse(receive, NumberStyles.Any, CultureInfo.InvariantCulture, out double i))
             {
                 //TODO приемлимо ли так
-                throw new DeviceException($"Значние {receive} не удалось привести к числу");
+                throw new StandException($"Stand Exception: Значние {receive} не удалось привести к числу");
             }
 
             return i;

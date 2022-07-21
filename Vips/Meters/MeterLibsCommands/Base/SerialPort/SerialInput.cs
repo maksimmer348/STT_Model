@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging.Abstractions;
+﻿using System.Text;
+using Microsoft.Extensions.Logging.Abstractions;
 using RJCP.IO.Ports;
 using SerialPortLib;
 
@@ -21,9 +22,10 @@ public class SerialInput : ISerialLib
         {
             port.SetPort(pornName, baud, adaptSettings.Item1, adaptSettings.Item2, adaptSettings.Item3);
         }
-        catch (DeviceException e)
+        catch (SerialException e)
         {
-            throw new DeviceException($"Порт \"{GetPortNum}\" не конфигурирован, ошибка - {e.Message}");
+            throw new SerialException(
+                $"SerialInput exception: Порт \"{GetPortNum}\" не конфигурирован, ошибка - {e.Message}");
         }
 
         port.ConnectionStatusChanged += OnPortConnectionStatusChanged;
@@ -64,8 +66,20 @@ public class SerialInput : ISerialLib
             Thread.Sleep(20);
             return isConnect;
         }
-        
-        throw new DeviceException($"Порт \"{GetPortNum}\" не отвечает");
+
+        return false;
+        //TODO раскоментить
+        // throw new SerialException($"SerialInput exception: Порт \"{GetPortNum}\" не отвечает");
+    }
+
+    public bool IsOpen()
+    {
+        if (port == null)
+        {
+            return false;
+        }
+
+        return port.IsConnected;
     }
 
     public void Disconnect()
@@ -76,7 +90,8 @@ public class SerialInput : ISerialLib
         }
         catch (Exception e)
         {
-            throw new DeviceException($"Порт \"{GetPortNum}\" не отвечает, ошибка - {e.Message}");
+            throw new SerialException(
+                $"SerialInput exception: Порт \"{GetPortNum}\" не отвечает, ошибка - {e.Message}");
         }
     }
 
@@ -127,16 +142,19 @@ public class SerialInput : ISerialLib
     /// <param name="receiveType"></param>
     /// <param name="terminator">Окончание строки команды по умолчанию \r\n</param>
     /// <returns>Ответ от устройства</returns>
-    public void TransmitCmd(string cmd, int delay = 0, string start = "", string end = "", string terminator = "")
+    public void TransmitCmdTextString(string cmd, int delay = 0, string start = null, string end = null,
+        string terminator = null)
     {
         if (string.IsNullOrEmpty(cmd))
         {
-            throw new DeviceException($"Команда - не должны быть пустыми");
+            throw new SerialException($"SerialInput exception: Команда - не должны быть пустыми");
         }
+
         if (delay == 0)
         {
-            throw new DeviceException($"Задержка - не должны быть = 0");
+            throw new SerialException($"SerialInput exception: Задержка - не должны быть = 0");
         }
+
         if (string.IsNullOrEmpty(terminator))
         {
             terminator = "\r\n";
@@ -145,5 +163,55 @@ public class SerialInput : ISerialLib
         Delay = delay;
         var message = System.Text.Encoding.UTF8.GetBytes(cmd + terminator);
         port.SendMessage(message);
+    }
+
+    /// <summary>
+    /// Отправка в прибор
+    /// </summary>
+    /// <param name="cmd"></param>
+    /// <param name="delay"></param>
+    /// <param name="start"></param>
+    /// <param name="end"></param>
+    /// <param name="terminator"></param>
+    public void TransmitCmdHexString(string cmd, int delay = 0, string start = null, string end = null,
+        string terminator = null)
+    {
+        TransmitCmdTextString(GetStringHexInText(cmd), delay,
+            GetStringHexInText(start), GetStringHexInText(end),
+            GetStringHexInText(terminator));
+    }
+    
+
+    string GetStringTextInHex(string s)
+    {
+        if (!string.IsNullOrEmpty(s))
+        {
+            byte[] bytes = new byte[s.Length / 2];
+            for (int i = 0; i < s.Length; i += 2)
+            {
+                var ff = bytes[i / 2];
+                bytes[i / 2] = Convert.ToByte(s.Substring(i, 2), 16);
+            }
+
+            return Encoding.ASCII.GetString(bytes);
+        }
+
+        return "";
+    }
+
+     string GetStringHexInText(string s)
+    {
+        if (!string.IsNullOrEmpty(s))
+        {
+            string hex = "";
+            foreach (var ss in s)
+            {
+                hex += Convert.ToByte(ss).ToString("x2");
+            }
+
+            return hex;
+        }
+
+        return "";
     }
 }

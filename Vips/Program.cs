@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
+using System.Diagnostics;
 using RJCP.IO.Ports;
 using SerialPortLib;
 using Vips;
@@ -9,90 +10,182 @@ using Vips;
 Stand stand = new Stand();
 ConfigVips configVips = new ConfigVips();
 
-// Console.WriteLine("введите номер випа");
-// string wrN = Console.ReadLine();
-// Console.WriteLine("введите тип випа");
-// string wrT = Console.ReadLine();
-// configVips.AddVip(wrN, Int32.Parse(wrT));
-//
-// Console.WriteLine("введите номер випа");
-// w
-// rN = Console.ReadLine();
-// configVips.AddVip(wrN, Int32.Parse(wrT));
-//
-// Console.WriteLine("введите номер випа");
-// wrN = Console.ReadLine();
-// configVips.AddVip(wrN, Int32.Parse(wrT));
-//
-// Console.WriteLine("введите номер випа");
-// wrN = Console.ReadLine();
-// configVips.AddVip(wrN, Int32.Parse(wrT));
-
-//добвление эфемерных випов
-// configVips.AddVip("1", 0);
-// configVips.AddVip("2", 0);
-// configVips.AddVip("3", 0);
-// configVips.AddVip("4", 0);
-// configVips.AddVip("5", 0);
-// configVips.AddVip("6", 0);
 
 //configVips.ChangedTypeVips(0, new TypeVip() {MaxVoltageOut1 = 100, MaxVoltageOut2 = 200});
 //int portNum = 1;
 //добавление приборв измерения в стенд
 //1 источник проверяет входной ток и входное напряжение
-stand.AddDevice(TypePort.SerialInput,TypeDevice.VoltMeter, "GDM-78255A", "COM32", 115200, 1, 0, 8);
-stand.AddDevice(TypePort.GodSerial,TypeDevice.VoltMeter, "PSP-405", "COM33", 2400,1,0,8, true);
-stand.AddDevice(TypePort.SerialInput,TypeDevice.VoltMeter, "PSW7-800-2.88", "COM34", 115200, 1, 0, 8);
-//2 источник проверяет выходное напряжение 1 канал
-//stand.AddDevice(TypeDevice.VoltMeter, "GPS-74303", portNum++, 0, 8,0);
+List<string> NameDevices = new List<string>() {"GDM-78255A", "PSW7-800-2.88"};
+//                                                                                           "COM32"
+stand.AddDevice(TypePort.SerialInput, TypeDevice.Supply, NameDevices[0], "COM39", 115200, 1, 0, 8);
+//stand.AddDevice(TypePort.GodSerial, TypeDevice.Supply, "PSP-405", "COM33", 2400, 1, 0, 8, true);
+stand.AddDevice(TypePort.SerialInput, TypeDevice.Supply, NameDevices[1], "COM34", 115200, 1, 0, 8);
+BaseLibCmd libCmd = BaseLibCmd.getInstance();
 
-//3 источник проверяет выходное напряжение 2 канал
-//stand.AddDevice(TypeDevice.VoltMeter, "GPS-74303", portNum++, 0, 8, 0);
-    
-//1 термометр проверяет температуру
-//stand.AddDevice(TypeDevice.Thermometer, "GDM-7433",portNum++ , 0, 8,0);
-//1 нагрузка нагружает выбранный ВИП
-//stand.AddDevice(TypeDevice.Load, "GDM-4303",portNum++ , 0, 8,0);
-string portNumRelays = "COM31";
-//stand.AddRelays(portNumRelays , 9600, 1,0, 8, 12);
-//stand.AddDevice(TypeDevice.Relay, "2", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "3", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "4", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "5", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "6", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "7", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "8", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "9", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "10", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "11", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-// stand.AddDevice(TypeDevice.Relay, "12", portNumRelays, 9600, stopBitsRelays,parityRelays, dataBitsRelays);
-//stand.AddVips(configVips.Vips);
-stand.Cnn();
-while (true)
+foreach (var name in NameDevices)
 {
-    stand.NCheck();
+    var status = libCmd.DeviceCommands.FirstOrDefault(x => x.Key.NameCmd == "Status" && x.Key.NameDevice == name).Value;
+    if (status == null)
+    {
+        libCmd.AddCommand("Status", "GDM-78255A", "*IN?", "78255", 100);
+    }
 }
 
+//добвление эфемерных випов
+// configVips.AddVip("2", 0);
+// configVips.AddVip("3", 0);
+// configVips.AddVip("4", 0);
+// configVips.AddVip("5", 0);
+// configVips.AddVip("6", 0);
+//
+// string portNumRelays = "COM31";
+// int baud = 960;
+// int stopBitsRelays = 1;
+// int parityRelays = 0;
+// int dataBitsRelays = 8;
+// int countRelays = 12;
+// stand.AddRelays(portNumRelays, baud, stopBitsRelays, parityRelays, dataBitsRelays, countRelays);
+// stand.AddVips(configVips.Vips);
 
-return;
 
-var devicesList =  await stand.CheckConnectPort();
-devicesList = await stand.CheckConnectDevices();
-return;
+//TODO когда нажали кнопку ведущую из конфига устройств делать ее disabled
+Console.WriteLine("Programm message: Выполнить проверку устройств?");
 
-// if (!devicesList.Any())
+//количетсво проверок приборов
+int checkCount = 2;
+Stopwatch stopwatch = new Stopwatch();
+
+stopwatch.Restart();
+//производим проверку компортов
+
+//для отладки (добавление команды в битблиотеку)
+libCmd.ChangeCommand("Status", "GDM-78255A", "*IDN?");
+stand.ChangeDevice(0, new ConfigDeviceParams() {PortName = "COM32"});
+for (int i = 1; i <= checkCount; i++)
+{
+    //принимает сбойные компорты
+    List<BaseDevice> errorPortsList = await stand.CheckConnectPorts();
+    //если сбоынйе компорты есть 
+    if (errorPortsList.Any())
+    {
+        //перербираем их
+        foreach (var errorDevice in errorPortsList)
+        {
+            Console.WriteLine(
+                $"Programm message: Порт {errorDevice.GetConfigDevice().PortName} для устройства - {errorDevice.Name} НЕ открыт, попытка - {i}");
+        }
+
+        //сравниваем сбоынйе компорты со всеми в стенде
+        var NoErrorPortsList = stand.Devices.Except(errorPortsList).ToList();
+        //если в стенде есть рабочие компорты преебираем их
+        foreach (var noErrorDevice in NoErrorPortsList)
+        {
+            Console.WriteLine(
+                $"Programm message: Порт {noErrorDevice.GetConfigDevice().PortName} для устройства - {noErrorDevice.Name} попытка - {i}");
+        }
+    }
+
+    //если сбоынйх компортов нет 
+    if (!errorPortsList.Any())
+    {
+        //преребор провереных копортов
+        foreach (var device in stand.Devices)
+        {
+            Console.WriteLine(
+                $"Programm message: Порт {device.GetConfigDevice().PortName} для устройства - {device.Name} открыт, попытка - {i}");
+        }
+
+        //преходим к проверке устройств
+        for (int j = 1; j <= checkCount; j++)
+        {
+            //принимает сбойные устройства
+            List<BaseDevice> errorDevicesList = await stand.CheckConnectDevices();
+            //если сбойные утсройства есть 
+            if (errorDevicesList.Any())
+            {
+                //перебираем сбоынйх устройств
+                foreach (var VARIABLE in errorDevicesList)
+                {
+                    Console.WriteLine($"Programm message: Устройство НЕ прошло - {VARIABLE.Name}, попытка - {j}");
+                }
+
+                //для отладки (добавление команды в битблиотеку)
+                libCmd.ChangeCommand("Status", "GDM-78255A", "*IDN?");
+
+                //сравниваем есть ли приборы без ошибок 
+                var NoErrorDevicesList = stand.Devices.Except(errorDevicesList).ToList();
+                //перебриаем приборы без ошибок
+                foreach (var noErrorDevice in NoErrorDevicesList)
+                {
+                    Console.WriteLine(
+                        $"Programm message: Устройство {noErrorDevice.Name} прошло попытка - {j}");
+                }
+            }
+
+            //если приборов с ошибками нет
+            if (!errorDevicesList.Any())
+            {
+                //перебриаем их
+                foreach (var VARIABLE in stand.Devices)
+                {
+                    Console.WriteLine(
+                        $"Programm message: Устройство прошло - {VARIABLE.Name}, попытка - {j}");
+                }
+                
+                //TODO Время выполнения - 447 мс уменшить
+                Console.WriteLine($"Programm message: Время выполнения - {stopwatch.ElapsedMilliseconds} мс");
+
+                //и начинаем проверку реле
+                //stand.CheckConnectRelays();
+                return;
+            }
+        }
+    }
+
+    stand.ChangeDevice(0, new ConfigDeviceParams() {PortName = "COM32"});
+}
+
+Console.Read();
+
+// bool connectLoop = true;
+// List<BaseDevice> errorDevicesList = new List<BaseDevice>();
+// while (connectLoop)
 // {
-//     devicesList = await stand.CheckConnectDevices();
-//     if (!devicesList.Any())
+//     errorDevicesList = await stand.CheckConnectPort();
+//     
+//     if (errorDevicesList.Any())
+//     {
+//         foreach (var errorDevice in errorDevicesList)
+//         {
+//             Console.WriteLine(
+//                 $"Порт {errorDevice.GetConfigDevice().PortName} для устройства - {errorDevice.Name} не открыт");
+//         }
+//     }
+//
+//     Console.WriteLine("Повторить попытку");
+//     var r = Console.ReadLine();
+//     if (r == "Q".ToLower())
+//     {
+//         connectLoop = false;
+//     }
+// }
+//
+// var receiveLoop = true;
+//
+// while (receiveLoop)
+// {
+//     errorDevicesList = await stand.CheckConnectDevices();
+//     if (!errorDevicesList.Any())
 //     {
 //         foreach (var VARIABLE in stand.Devices)
 //         {
 //             Console.WriteLine($"прошло - {VARIABLE.Name}");
 //         }
-//        
+//
 //         stand.StandPrepareTest();
 //     }
 // }
+
 
 //var devicesL = await stand.CheckConnectPort(1);
 

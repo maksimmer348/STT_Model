@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using SerialPortLib;
 
 namespace Vips
 {
@@ -6,46 +7,65 @@ namespace Vips
 //TODO добавиьт сериализацию команд потом (не обязательно)
     public class BaseLibCmd
     {
-        public Dictionary<MeterIdentCmd, MeterCmd> DeviceCommands { get; set; } =
-            new Dictionary<MeterIdentCmd, MeterCmd>();
+        private static BaseLibCmd instance;
+
+        public string Name { get; private set; }
+        private static object syncRoot = new Object();
+
+        public static BaseLibCmd getInstance()
+        {
+            if (instance == null)
+            {
+                lock (syncRoot)
+                {
+                    if (instance == null)
+                        instance = new BaseLibCmd();
+                }
+            }
+            return instance;
+        }
+
+
+        public Dictionary<DeviceIdentCmd, DeviceCmd> DeviceCommands { get; set; } =
+            new Dictionary<DeviceIdentCmd, DeviceCmd>();
 
         public BaseLibCmd()
         {
             #region Statuses
 
+            // //команда с шаблоном ответа
+            // DeviceCommands.Add(
+            //     new DeviceIdentCmd()
+            //     {
+            //         //имя устройктсва
+            //         NameDevice = "GDM-78255A",
+            //         //имя команды
+            //         NameCmd = "Status"
+            //     },
+            //     new DeviceCmd()
+            //     {
+            //         //запрос
+            //         Transmit = "*IDN?",
+            //         //окончание строки
+            //         Terminator = "\n",
+            //         //ожидаемый ответ
+            //         Receive = "78255",
+            //         //тип ожидаемого ответа - текстовый
+            //         MessageType = TypeCmd.Text,
+            //         //задержка между запросом и ответом 
+            //         Delay = 70
+            //     });
+
             //команда с шаблоном ответа
             DeviceCommands.Add(
-                new MeterIdentCmd()
-                {
-                    //имя устройктсва
-                    NameDevice = "GDM-78255A",
-                    //имя команды
-                    NameCmd = "Status"
-                },
-                new MeterCmd()
-                {
-                    //запрос
-                    Transmit = "*IDN?",
-                    //окончание строки
-                    Terminator = "\n",
-                    //ожидаемый ответ
-                    Receive = "78255",
-                    //тип ожидаемого ответа - текстовый
-                    MessageType = TypeCmd.Text,
-                    //задержка между запросом и ответом 
-                    Delay = 50
-                });
-
-              //команда с шаблоном ответа
-            DeviceCommands.Add(
-                new MeterIdentCmd()
+                new DeviceIdentCmd()
                 {
                     //имя устройктсва
                     NameDevice = "PSW7-800-2.88",
                     //имя команды
                     NameCmd = "Status"
                 },
-                new MeterCmd()
+                new DeviceCmd()
                 {
                     //запрос
                     Transmit = "*IDN?",
@@ -54,19 +74,19 @@ namespace Vips
                     //ожидаемый ответ
                     Receive = "800-2.88",
                     //задержка между запросом и ответом 
-                    Delay = 50
+                    Delay = 100
                 });
-           
-                
+
+
             DeviceCommands.Add(
-                new MeterIdentCmd()
+                new DeviceIdentCmd()
                 {
                     //имя устройктсва
                     NameDevice = "PSP-405",
                     //имя команды
                     NameCmd = "Status"
                 },
-                new MeterCmd()
+                new DeviceCmd()
                 {
                     //запрос
                     Transmit = "W",
@@ -77,7 +97,7 @@ namespace Vips
                     //тип ожидаемого ответа - текстовый
                     MessageType = TypeCmd.Hex,
                     //задержка между запросом и ответом 
-                    Delay = 50,
+                    Delay = 100,
 
                     StartOfString = "W",
                     PingCount = 3,
@@ -89,12 +109,12 @@ namespace Vips
             #region RelayCommands
 
             DeviceCommands.Add(
-                new MeterIdentCmd()
+                new DeviceIdentCmd()
                 {
                     NameDevice = "Реле-1",
                     NameCmd = "On"
                 },
-                new MeterCmd()
+                new DeviceCmd()
                 {
                     Transmit = "4e50617f",
                     Receive = "Ok",
@@ -103,12 +123,12 @@ namespace Vips
                 });
 
             DeviceCommands.Add(
-                new MeterIdentCmd()
+                new DeviceIdentCmd()
                 {
                     NameDevice = "Реле-1",
                     NameCmd = "Off"
                 },
-                new MeterCmd()
+                new DeviceCmd()
                 {
                     Transmit = "4e50b8A6",
                     Receive = "Ok",
@@ -117,12 +137,12 @@ namespace Vips
                 });
 
             DeviceCommands.Add(
-                new MeterIdentCmd()
+                new DeviceIdentCmd()
                 {
                     NameDevice = "Реле-2",
                     NameCmd = "On"
                 },
-                new MeterCmd()
+                new DeviceCmd()
                 {
                     Transmit = "4e50617f",
                     Receive = "Ok",
@@ -131,12 +151,12 @@ namespace Vips
                 });
 
             DeviceCommands.Add(
-                new MeterIdentCmd()
+                new DeviceIdentCmd()
                 {
                     NameDevice = "Реле-2",
                     NameCmd = "Off"
                 },
-                new MeterCmd()
+                new DeviceCmd()
                 {
                     Transmit = "4e50b8A6",
                     Receive = "Ok",
@@ -160,15 +180,15 @@ namespace Vips
         /// <param name="endOfString"> Конец строки для библиотеки SerialGod </param>
         /// <param name="pingCount">Количество попыток на считывание команды для библиотеки SerialGod - попытка += ~30мс </param>
         public void AddCommand(string nameCommand, string nameDevice, string transmitCmd, string receiveCmd,
-            int delayCmd, string startOfString = "", string endOfString = "", int pingCount = 0,
+            int delayCmd, string startOfString = null, string endOfString = null, int pingCount = 0,
             TypeCmd type = TypeCmd.Text)
         {
-            var tempIdentCmd = new MeterIdentCmd
+            var tempIdentCmd = new DeviceIdentCmd
             {
                 NameCmd = nameCommand,
                 NameDevice = nameDevice
             };
-            var tempCmd = new MeterCmd
+            var tempCmd = new DeviceCmd
             {
                 Transmit = transmitCmd,
                 Receive = receiveCmd,
@@ -207,6 +227,7 @@ namespace Vips
             }
         }
 
+        //TODO нужно ли переписвать
         /// <summary>
         ///  Изменить значение команды по ключу
         /// </summary>
@@ -219,8 +240,9 @@ namespace Vips
         /// <param name="startOfStringNew">Начало строки для библиотеки SerialGod</param>
         /// <param name="endOfStringNew"> Конец строки для библиотеки SerialGod </param>
         /// <param name="pingCountNew">Количество попыток на считывание команды для библиотеки SerialGod - попытка += ~30мс </param>
-        public void ChangeCommand(string nameCommandOld, string nameDeviceOld, string transmitCmdNew = "",
-            string receiveCmdNew = "", int delayCmdNew = 0, string startOfStringNew = "", string endOfStringNew = "",
+        public void ChangeCommand(string nameCommandOld, string nameDeviceOld, string transmitCmdNew = null,
+            string receiveCmdNew = null, int delayCmdNew = 0, string startOfStringNew = null,
+            string endOfStringNew = null,
             int pingCountNew = 0,
             TypeCmd typeNew = TypeCmd.Text)
         {
@@ -230,7 +252,7 @@ namespace Vips
 
             if (DeviceCommands.ContainsKey(select))
             {
-                var tempCmd = new MeterCmd();
+                var tempCmd = new DeviceCmd();
                 tempCmd.Transmit = transmitCmdNew;
                 tempCmd.Delay = delayCmdNew;
                 tempCmd.MessageType = typeNew;
@@ -242,65 +264,42 @@ namespace Vips
                 if (string.IsNullOrWhiteSpace(transmitCmdNew))
                 {
                     tempCmd.Transmit = DeviceCommands[select].Transmit;
-                    Console.WriteLine(
-                        $"Не Не была изменена команда {select.NameCmd} - {transmitCmdNew}");
-                    //уведомить
                 }
 
                 if (string.IsNullOrWhiteSpace(receiveCmdNew))
                 {
                     tempCmd.Receive = DeviceCommands[select].Receive;
-                    Console.WriteLine(
-                        $"Не была изменена команда {select.NameCmd} - {receiveCmdNew}");
-                    //уведомить
                 }
 
                 if (delayCmdNew == 0)
                 {
                     tempCmd.Delay = DeviceCommands[select].Delay;
-                    Console.WriteLine(
-                        $"Не была изменена команда {select.NameCmd} - {delayCmdNew}");
-                    //уведомить
                 }
 
                 if (typeNew == TypeCmd.Text)
                 {
                     tempCmd.MessageType = DeviceCommands[select].MessageType;
-                    Console.WriteLine(
-                        $"Не была изменена команда {select.NameCmd} - {typeNew}");
-                    //уведомить
                 }
 
 
                 if (string.IsNullOrWhiteSpace(startOfStringNew))
                 {
                     tempCmd.StartOfString = DeviceCommands[select].StartOfString;
-                    Console.WriteLine(
-                        $"Не была изменена команда {select.NameCmd} - {startOfStringNew}");
-                    //уведомить
+             
                 }
 
                 if (string.IsNullOrWhiteSpace(endOfStringNew))
                 {
                     tempCmd.EndOfString = DeviceCommands[select].EndOfString;
-                    Console.WriteLine(
-                        $"Не была изменена команда {select.NameCmd} - {endOfStringNew}");
-                    //уведомить
+           
                 }
 
                 if (pingCountNew == 0)
                 {
                     tempCmd.PingCount = DeviceCommands[select].PingCount;
-                    Console.WriteLine(
-                        $"Не была изменена команда {select.NameCmd} - {typeNew}");
-                    //уведомить
                 }
 
                 DeviceCommands[select] = tempCmd;
-
-                Console.WriteLine(
-                    $"была изменена команда {select.NameCmd} для прибора тип {select.NameDevice}, имя прибора {select.NameDevice}");
-                //уведомить
             }
         }
     }

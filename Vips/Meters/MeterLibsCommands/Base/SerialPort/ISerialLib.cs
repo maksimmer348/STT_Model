@@ -1,5 +1,4 @@
 ﻿using RJCP.IO.Ports;
-using SerialPortLib;
 
 namespace Vips;
 
@@ -47,12 +46,15 @@ public interface ISerialLib
     /// <returns>Неудача</returns>
     public bool Connect();
 
+    public bool IsOpen();
+
     /// <summary>
     /// Команда отключения к serial port
     /// </summary>
     /// <returns>Неудача</returns>
     public void Disconnect();
 
+    //TODO два вида отправки для разных типаов писем
     /// <summary>
     /// Отправка в устройство и прием команд из устройства
     /// </summary>
@@ -61,5 +63,11 @@ public interface ISerialLib
     /// <param name="start">Начало строки для библиотеки SerialGod </param>
     /// <param name="end">Конец строки для библиотеки SerialGod</param>
     /// <param name="terminator">Окончание строки команды - по умолчанию \n\r или 0D0A </param>
-    public void TransmitCmd(string cmd, int delay = 0, string start = "", string end = "", string terminator = "");
+    public void TransmitCmdTextString(string cmd, int delay = 0, string start = null, string end = null,
+        string terminator = null);
+
+    
+    public void TransmitCmdHexString(string cmd, int delay = 0, string start = null, string end = null,
+    string terminator = null);
+    
 }

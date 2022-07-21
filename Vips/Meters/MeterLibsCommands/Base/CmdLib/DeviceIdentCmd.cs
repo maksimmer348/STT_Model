@@ -1,6 +1,6 @@
 ﻿namespace Vips
 {
-    public class MeterIdentCmd
+    public class DeviceIdentCmd
     {
         //public TypeDevice TypeDevice { get; set; }
         
